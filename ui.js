@@ -16,7 +16,6 @@
   let healthValue = 100;
 
   // counters for repeated actions
-  let lastAction = null;
   let toothStage = 0;
   let sweetCount = 0;
   let healthyCount = 0;
@@ -162,46 +161,55 @@
       case 'brush':
         cleanValue = clamp100(cleanValue + 25);
         healthValue = clamp100(healthValue + 25);
-        sweetCount = 0;
-        healthyCount = 0;
-        // jangan reset toothStage di sini
+        sweetCount = 0; healthyCount = 0; toothStage = 0;
         fadeInfo("🪥 Menggosok gigi: Kebersihan +25%, Kesehatan +25%");
-        lastAction = 'brush';
         break;
-
-      case 'sweet':{
-        // kebersihan selalu turun 12.5 (langsung)
+        case 'sweet':
+        // setiap tekan mengurangi kebersihan sedikit
         cleanValue = clamp100(cleanValue - 12.5);
 
-        // naik tahap visual/cerita
+        // pastikan toothStage terdefinisi
         toothStage = (typeof toothStage === 'number') ? toothStage : 0;
+
+        // naik satu tahap per tekan, maksimal 8
         if (toothStage < 8) toothStage++;
 
-        // === Perubahan penting: pastikan health tidak "meloncat" setelah brush ===
-        // Jika health lebih besar dari clean, turunkan health agar tidak > clean.
-        // Ini berlaku baik setelah brush maupun dalam kondisi lain.
-        if (healthValue > cleanValue) {
-          // Pilih: samakan langsung (mengejar) atau kurangi sedikit. Di sini kita samakan.
-          healthValue = clamp100(cleanValue);
-        }
+        // sesuaikan health setiap 2 tahap supaya model berganti pada 75/50/25/0
+        // stage 1 -> health 100, 2 -> 75, 3 -> 75, 4 -> 50, 5 -> 50, 6 -> 25, 7 -> 25, 8 -> 0
+        const healthDrops = Math.floor(toothStage / 2); // 0..4
+        healthValue = clamp100(100 - (healthDrops * 25));
 
-        // Pesan sesuai toothStage (tetap sama)
+        // tampilkan pesan sesuai tahap (urutan yang kamu minta)
         switch (toothStage) {
-          case 1: fadeInfo("Gulanya nempel di gigimu! Hati-hati ya!"); break;
-          case 2: fadeInfo("Plaknya makin banyak nih… yuk kurangi permennya!"); break;
-          case 3: fadeInfo("Plaknya berubah jadi asam yang bisa membuat gigi rusak!"); break;
-          case 4: fadeInfo("Asamnya makin kuat… hati-hati ya!"); break;
-          case 5: fadeInfo("Lapisan luar gigi mulai melemah, jangan tambah permennya ya!"); break;
-          case 6: fadeInfo("Email gigi makin rapuh… yuk hentikan sebelum bolong!"); break;
-          case 7: fadeInfo("Gigi mulai bolong kecil! Kurangi manisnya!"); break;
-          case 8: fadeInfo("Gigi sudah bolong besar… saatnya mulai ulang ya!"); break;
-          default: fadeInfo("🍭 Gula menempel — kebersihan menurun.");
+          case 1:
+            fadeInfo("Wah, gulanya nempel di gigimu! Hati-hati ya, nanti bisa muncul plak.");
+            break;
+          case 2:
+            fadeInfo("Plaknya makin banyak nih… Yuk kurangi permennya supaya gigimu tetap bersih!");
+            break;
+          case 3:
+            fadeInfo("Plaknya berubah jadi asam yang bisa bikin gigi sakit, hati-hati ya!");
+            break;
+          case 4:
+            fadeInfo("Asamnya makin kuat… nanti gigimu bisa rusak kalau terus makan manis!");
+            break;
+          case 5:
+            fadeInfo("Lapisan pelindung gigimu mulai melemah. Yuk berhenti makan permen dulu!");
+            break;
+          case 6:
+            fadeInfo("Pelindung gigimu makin rapuh… ayo jaga sebelum bolong beneran!");
+            break;
+          case 7:
+            fadeInfo("Aduh, gigimu mulai bolong! Bisa bahaya, kurangi manisnya ya!");
+            break;
+          case 8:
+            fadeInfo("Giginya sudah bolong besar dan nggak bisa diperbaiki… Harus mulai ulang dari awal ya!");
+            // (opsional) set kondisi terminal / disable tombol — UI lain sudah cek health<=0
+            break;
+          default:
+            fadeInfo("🍭 Gula menempel — kebersihan sedikit menurun.");
         }
-
-        lastAction = 'sweet';
         break;
-      }
-
 
       case 'healthy':
         cleanValue = clamp100(cleanValue + 12.5);
