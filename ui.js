@@ -161,10 +161,10 @@
       case 'brush':
         cleanValue = clamp100(cleanValue + 25);
         healthValue = clamp100(healthValue + 25);
-        sweetCount = 0; healthyCount = 0; toothStage = 0;
+        sweetCount = 0; healthyCount = 0;
         fadeInfo("🪥 Menggosok gigi: Kebersihan +25%, Kesehatan +25%");
         break;
-        case 'sweet':
+      case 'sweet':
         // setiap tekan mengurangi kebersihan sedikit
         cleanValue = clamp100(cleanValue - 12.5);
 
@@ -174,12 +174,13 @@
         // naik satu tahap per tekan, maksimal 8
         if (toothStage < 8) toothStage++;
 
-        // sesuaikan health setiap 2 tahap supaya model berganti pada 75/50/25/0
-        // stage 1 -> health 100, 2 -> 75, 3 -> 75, 4 -> 50, 5 -> 50, 6 -> 25, 7 -> 25, 8 -> 0
-        const healthDrops = Math.floor(toothStage / 2); // 0..4
-        healthValue = clamp100(100 - (healthDrops * 25));
+        // kurangi health secara relatif setiap kali kita mencapai tahap genap (2,4,6,8)
+        // ini mengurangi 25% pada stage 2,4,6,8 tanpa mereset health ke nilai absolut.
+        if (toothStage % 2 === 0) {
+          healthValue = clamp100(healthValue - 25);
+        }
 
-        // tampilkan pesan sesuai tahap (urutan yang kamu minta)
+        // tampilkan pesan sesuai tahap
         switch (toothStage) {
           case 1:
             fadeInfo("Wah, gulanya nempel di gigimu! Hati-hati ya, nanti bisa muncul plak.");
@@ -204,12 +205,12 @@
             break;
           case 8:
             fadeInfo("Giginya sudah bolong besar dan nggak bisa diperbaiki… Harus mulai ulang dari awal ya!");
-            // (opsional) set kondisi terminal / disable tombol — UI lain sudah cek health<=0
             break;
           default:
             fadeInfo("🍭 Gula menempel — kebersihan sedikit menurun.");
         }
         break;
+
 
       case 'healthy':
         cleanValue = clamp100(cleanValue + 12.5);
