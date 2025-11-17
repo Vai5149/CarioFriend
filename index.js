@@ -1,4 +1,4 @@
-// index.js (ORBIT-ONLY brush) - full file (plus xrBtn hide/show)
+// index.js (perbaikan: handler dipasang setelah initThree, cek dukungan XR, debug logs)
 import * as THREE from './modules/three.module.js';
 import { GLTFLoader } from './modules/GLTFLoader.js';
 
@@ -40,21 +40,26 @@ const _pos = new THREE.Vector3();
 const _quat = new THREE.Quaternion();
 const _scale = new THREE.Vector3();
 
-const xrBtn = document.getElementById('xrBtn');
-
 // lighting global
 let spotLight = null;
 
-xrBtn.addEventListener('click', () => {
-  if (!xrSession) requestXRSession();
-  else endXRSession();
-});
+// debug helper
+function safeLog(...args) { if (console && console.log) console.log(...args); }
 
+// --- initThree and UI wiring ---
 function initThree() {
   const canvas = document.getElementById('canvas');
   gl = canvas.getContext('webgl2', { antialias: true });
+
   if (!gl) {
-    alert('WebGL2 tidak tersedia. AR mungkin tidak berjalan di browser ini.');
+    // fallback try webgl (if webgl2 not supported)
+    safeLog('webgl2 not available, trying webgl fallback');
+    gl = canvas.getContext('webgl', { antialias: true });
+    if (!gl) {
+      alert('WebGL tidak tersedia. AR mungkin tidak berjalan di browser ini.');
+      safeLog('No WebGL available');
+      return;
+    }
   }
 
   renderer = new THREE.WebGLRenderer({ canvas: canvas, context: gl, alpha: true });
@@ -151,7 +156,6 @@ function initThree() {
     }
     objectPlaced = false;
     currentHealthModelKey = DEFAULT_HEALTH_KEY;
-    // also hide reticle so user re-place (reticle will show when hit-test resumes)
     reticle.visible = false;
   });
 
@@ -160,7 +164,10 @@ function initThree() {
     endXRSession();
   });
 
-  console.log('index.js loaded. Ready.');
+  safeLog('initThree complete');
+
+  // after Three is ready, wire up XR button and detect support
+  wireXRButton();
 }
 
 // clamp to discrete keys
@@ -180,19 +187,22 @@ function applyMeshMaterialTweaks(model) {
       c.receiveShadow = true;
       const mat = c.material;
       if (mat) {
-        if ('metalness' in mat) mat.metalness = Math.min(0.05, mat.metalness || 0);
-        if ('roughness' in mat) mat.roughness = Math.min(0.9, (mat.roughness === undefined ? 0.6 : mat.roughness));
-        mat.side = THREE.DoubleSide;
-        mat.transparent = true;
-        if (typeof mat.opacity === 'undefined') mat.opacity = 1.0;
-        mat.needsUpdate = true;
+        try {
+          if ('metalness' in mat) mat.metalness = Math.min(0.05, mat.metalness || 0);
+          if ('roughness' in mat) mat.roughness = Math.min(0.9, (mat.roughness === undefined ? 0.6 : mat.roughness));
+          mat.side = THREE.DoubleSide;
+          mat.transparent = true;
+          if (typeof mat.opacity === 'undefined') mat.opacity = 1.0;
+          mat.needsUpdate = true;
+        } catch (e) {
+          // some materials may be arrays or special - ignore errors
+        }
       }
     }
   });
 }
 
 // ---- PRELOAD ALL MODELS (tooth + interactors) ----
-// store both scene and animations (so we can play baked GLB clips)
 function preloadAllModelsAndInteractors() {
   const files = new Set(Object.values(MODEL_MAP).concat(Object.values(INTERACTORS)));
   const promises = [];
@@ -243,7 +253,8 @@ async function runInteractorAnimation(action) {
   else {
     const gltf = await new Promise((res, rej) => {
       loader.load(file, (g) => res(g), undefined, (err) => rej(err));
-    });
+    }).catch((e) => { console.warn('runInteractor load fail', e); return null; });
+    if (!gltf) return;
     const node = gltf.scene || gltf.scenes[0];
     const clips = gltf.animations && gltf.animations.length ? gltf.animations.slice() : [];
     if (!node) return;
@@ -260,11 +271,9 @@ async function runInteractorAnimation(action) {
   const localRot = new THREE.Euler();
   const localScale = new THREE.Vector3(1,1,1);
 
-  // BRUSH: upright, slightly above, no tilt (user request)
   if (action === 'brush') {
-    // upright & slightly higher on Y so brush orbits the top of the tooth
-    localStart.set(0.0, 0.40, 0.12); // x,y,z : center above crown
-    localRot.set(0, 0, 0);           // no tilt - upright
+    localStart.set(0.0, 0.40, 0.12);
+    localRot.set(0, 0, 0);
     localScale.set(0.55,0.55,0.55);
   } else if (action === 'healthy') {
     localStart.set(0.0, 1.6, 0.9);
@@ -286,7 +295,6 @@ async function runInteractorAnimation(action) {
   wrapper.add(interactorRoot);
   placedObject.add(wrapper);
 
-  // For brush, pass both wrapper & root so we can play GLB clips if exist
   let animPromise = null;
   if (action === 'brush') animPromise = animateBrushWithPossibleGLB(() => ({ wrapper, root: interactorRoot }));
   else if (action === 'healthy') animPromise = animateCarrotFade(wrapper);
@@ -342,8 +350,6 @@ function animateBrushWithPossibleGLB(getPair) {
   return animateBrushUpright(wrapper);
 }
 
-// animateBrushUpright: orbit above tooth, brush stays upright (rotation.x kept near 0)
-// NO helicopter spin — only orbit movement and slight sweep rotation (z) for visual
 function animateBrushUpright(wrapper) {
   return new Promise((resolve) => {
     const start = performance.now();
@@ -354,10 +360,9 @@ function animateBrushUpright(wrapper) {
     const initialRotZ = wrapper.rotation.z;
     const initialScale = wrapper.scale.x;
 
-    // CONFIG: orbit parameters tuned for top brushing
-    const radius = 0.50;       // orbit radius
-    const revolutions = 3;     // how many revolutions
-    const orbitDuration = 1200; // ms duration
+    const radius = 0.50;
+    const revolutions = 3;
+    const orbitDuration = 1200;
     const approachDur = 100;
     const retreatDur = 100;
     const totalOrbitTime = orbitDuration;
@@ -365,10 +370,9 @@ function animateBrushUpright(wrapper) {
     function frame(now) {
       const elapsed = now - start;
 
-      // approach: move slightly down to contact zone
       if (elapsed < approachDur) {
         const t = easeInOutQuad(elapsed / approachDur);
-        wrapper.position.z = lerp(cz + 0.02, cz - 0.03, t); // come slightly closer
+        wrapper.position.z = lerp(cz + 0.02, cz - 0.03, t);
         wrapper.rotation.x = lerp(wrapper.rotation.x, 0, t);
         requestAnimationFrame(frame);
         return;
@@ -377,34 +381,26 @@ function animateBrushUpright(wrapper) {
       const orbitStart = approachDur;
       const orbitEnd = approachDur + totalOrbitTime;
 
-      // orbit: circular movement around top (xy-plane) with tiny vertical dip for contact
       if (elapsed >= orbitStart && elapsed < orbitEnd) {
         const t = (elapsed - orbitStart) / (orbitEnd - orbitStart);
         const eased = easeInOutQuad(t);
         const angle = eased * revolutions * Math.PI * 2;
 
-        // orbit center is (cx, cy). We move mostly in x axis with small y variation (top of crown)
         const ox = cx + Math.cos(angle) * radius;
         const oy = cy + Math.sin(angle) * (radius * 0.35);
 
-        // simulate brushing contact: tiny periodic dip in y (downwards) based on angle
-        const contactDip = 0.01 * Math.abs(Math.sin(angle * 3)); // small dip, always positive
+        const contactDip = 0.01 * Math.abs(Math.sin(angle * 3));
         wrapper.position.x = ox;
         wrapper.position.y = oy - contactDip;
 
-        // keep brush upright: rot.x near 0
         wrapper.rotation.x = 0;
-        // small sweep rotation around Z for visual sweeping (not spinning the head)
         wrapper.rotation.z = initialRotZ + Math.sin(angle * 2) * 0.06;
-
-        // tiny scale pulse for pressure feel
         wrapper.scale.setScalar(initialScale * (1 + 0.01 * Math.sin(angle * 4)));
 
         requestAnimationFrame(frame);
         return;
       }
 
-      // retreat: move back to original
       if (elapsed >= orbitEnd && elapsed < orbitEnd + retreatDur) {
         const t2 = (elapsed - orbitEnd) / retreatDur;
         const tt2 = easeInOutQuad(t2);
@@ -424,7 +420,6 @@ function animateBrushUpright(wrapper) {
   });
 }
 
-// carrots & candy animations (fall+fade) - using initialScale to avoid exploding
 function animateCarrotFade(wrapper) {
   return new Promise((resolve) => {
     const start = performance.now();
@@ -586,6 +581,7 @@ function disposeObject(obj) {
 }
 
 function onWindowResize() {
+  if (!camera || !renderer) return;
   camera.aspect = window.innerWidth / window.innerHeight;
   camera.updateProjectionMatrix();
   renderer.setSize(window.innerWidth, window.innerHeight);
@@ -615,10 +611,12 @@ async function requestXRSession() {
 
 async function onSessionStarted(session) {
   xrSession = session;
-  xrBtn.textContent = 'STOP AR';
+  // change label while presenting
+  const xrBtn = document.getElementById('xrBtn');
+  if (xrBtn) xrBtn.textContent = 'STOP AR';
 
   // HIDE (fade) the Enter AR button when AR starts
-  xrBtn.classList.add('hidden');
+  if (xrBtn) xrBtn.classList.add('hidden');
 
   // INFORM UI that XR started
   window.dispatchEvent(new CustomEvent('xr-started'));
@@ -639,17 +637,18 @@ async function onSessionStarted(session) {
 
 function onSessionEnded() {
   xrSession = null;
-  xrBtn.textContent = 'Enter AR';
+  const xrBtn = document.getElementById('xrBtn');
+  if (xrBtn) xrBtn.textContent = 'Enter AR';
 
   // SHOW (fade in) the Enter AR button when AR ends
-  xrBtn.classList.remove('hidden');
+  if (xrBtn) xrBtn.classList.remove('hidden');
 
   // INFORM UI that XR ended
   window.dispatchEvent(new CustomEvent('xr-ended'));
 
   hitTestSourceRequested = false;
   hitTestSource = null;
-  renderer.setAnimationLoop(null);
+  if (renderer) renderer.setAnimationLoop(null);
 }
 
 function endXRSession() {
@@ -658,7 +657,7 @@ function endXRSession() {
 }
 
 function onSelect() {
-  if (!reticle.visible || objectPlaced) {
+  if (!reticle || !reticle.visible || objectPlaced) {
     return;
   }
 
@@ -759,5 +758,65 @@ const SWEET_MESSAGES = [
   "Giginya sudah bolong besar dan nggak bisa diselamatkan… harus mulai ulang ya!"
 ];
 
-// initialize
+// --- XR button wiring & support check ---
+// We delay attaching the click listener until after Three is initialized
+function wireXRButton() {
+  const xrBtn = document.getElementById('xrBtn');
+  if (!xrBtn) {
+    safeLog('No xrBtn found in DOM');
+    return;
+  }
+
+  // initial support detection
+  if (!('xr' in navigator)) {
+    xrBtn.textContent = 'AR Tidak Tersedia';
+    xrBtn.disabled = true;
+    xrBtn.setAttribute('aria-disabled', 'true');
+    safeLog('WebXR not present');
+    return;
+  }
+
+  // query support and enable/disable button accordingly
+  navigator.xr.isSessionSupported('immersive-ar')
+    .then((supported) => {
+      if (!supported) {
+        xrBtn.textContent = 'AR Tidak Didukung';
+        xrBtn.disabled = true;
+        xrBtn.setAttribute('aria-disabled', 'true');
+        safeLog('immersive-ar not supported');
+      } else {
+        xrBtn.disabled = false;
+        xrBtn.setAttribute('aria-disabled', 'false');
+        xrBtn.textContent = 'Enter AR';
+      }
+    })
+    .catch((e) => {
+      safeLog('isSessionSupported error', e);
+      // still keep button enabled to allow requestXRSession to show error
+    });
+
+  // attach click handler (debug log included)
+  xrBtn.addEventListener('click', async () => {
+    safeLog('xrBtn clicked — xrSession exists?', !!xrSession);
+
+    if (!('xr' in navigator)) {
+      alert('WebXR tidak tersedia di browser ini. Gunakan Chrome di Android dengan ARCore atau perangkat yang mendukung WebXR.');
+      return;
+    }
+    try {
+      const supported = await navigator.xr.isSessionSupported('immersive-ar');
+      if (!supported) {
+        alert('Perangkat/browser Anda tidak mendukung AR (immersive-ar).');
+        return;
+      }
+    } catch (e) {
+      safeLog('isSessionSupported threw', e);
+    }
+
+    if (!xrSession) requestXRSession();
+    else endXRSession();
+  });
+}
+
+// initialize (kamu punya initThree di akhir file sebelumnya — tetap panggil)
 initThree();
