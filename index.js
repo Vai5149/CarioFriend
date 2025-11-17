@@ -748,5 +748,16 @@ function render(time, frame) {
   renderer.render(scene, camera);
 }
 
+const SWEET_MESSAGES = [
+  "Gulanya nempel di gigi dan mulai bikin plak, hati-hati ya!",
+  "Plaknya makin banyak nih… ayo jangan sering makan permen!",
+  "Plak berubah jadi asam yang bisa merusak gigi, hati-hati ya!",
+  "Asamnya makin kuat… gigi bisa mulai rusak kalau terus begini!",
+  "Lapisan luar gigi mulai melemah, jangan tambah permennya ya!",
+  "Email gigi makin rapuh… yuk hentikan sebelum bolong!",
+  "Gigi mulai bolong kecil! Ini sudah berbahaya, kurangi manisnya!",
+  "Giginya sudah bolong besar dan nggak bisa diselamatkan… harus mulai ulang ya!"
+];
+
 // initialize
 initThree();
