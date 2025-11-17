@@ -169,7 +169,7 @@
         lastAction = 'brush';
         break;
 
-      case 'sweet': {
+      case 'sweet':{
         // kebersihan selalu turun 12.5 (langsung)
         cleanValue = clamp100(cleanValue - 12.5);
 
@@ -177,44 +177,25 @@
         toothStage = (typeof toothStage === 'number') ? toothStage : 0;
         if (toothStage < 8) toothStage++;
 
-        // Jika aksi sebelumnya adalah 'brush', maka pada sweet pertama
-        // setelah brush kita TIDAK menyentuh health — hanya clean berkurang.
-        // Pada sweet berikutnya (atau jika prevAction != 'brush'), health
-        // "mengejar" clean: kita set health = min(health, clean)
-        if (lastAction === 'brush') {
-          // hanya pesan — health tidak berubah
-          // (gunakan pesan sesuai toothStage)
-          switch (toothStage) {
-            case 1: fadeInfo("Gulanya nempel di gigimu! Hati-hati ya!"); break;
-            case 2: fadeInfo("Plaknya makin banyak nih… yuk kurangi permennya!"); break;
-            case 3: fadeInfo("Plaknya berubah jadi asam yang bisa membuat gigi rusak!"); break;
-            case 4: fadeInfo("Asamnya makin kuat… hati-hati ya!"); break;
-            case 5: fadeInfo("Lapisan luar gigi mulai melemah, jangan tambah permennya ya!"); break;
-            case 6: fadeInfo("Email gigi makin rapuh… yuk hentikan sebelum bolong!"); break;
-            case 7: fadeInfo("Gigi mulai bolong kecil! Kurangi manisnya!"); break;
-            case 8: fadeInfo("Gigi sudah bolong besar… saatnya mulai ulang ya!"); break;
-            default: fadeInfo("🍭 Gula menempel — kebersihan menurun.");
-          }
-        } else {
-          // tidak langsung setelah brush -> health mengejar clean
-          if (healthValue > cleanValue) {
-            healthValue = clamp100(cleanValue);
-          } else {
-            // opsional: jika health lebih kecil, kita bisa kurangi health sedikit per tekan
-            // healthValue = clamp100(healthValue - 12.5);
-          }
-          // pesan sesuai tahap
-          switch (toothStage) {
-            case 1: fadeInfo("Gulanya nempel di gigimu! Hati-hati ya!"); break;
-            case 2: fadeInfo("Plaknya makin banyak nih… yuk kurangi permennya!"); break;
-            case 3: fadeInfo("Plaknya berubah jadi asam yang bisa membuat gigi rusak!"); break;
-            case 4: fadeInfo("Asamnya makin kuat… hati-hati ya!"); break;
-            case 5: fadeInfo("Lapisan luar gigi mulai melemah, jangan tambah permennya ya!"); break;
-            case 6: fadeInfo("Email gigi makin rapuh… yuk hentikan sebelum bolong!"); break;
-            case 7: fadeInfo("Gigi mulai bolong kecil! Kurangi manisnya!"); break;
-            case 8: fadeInfo("Gigi sudah bolong besar… saatnya mulai ulang ya!"); break;
-            default: fadeInfo("🍭 Gula menempel — kebersihan menurun.");
-          }
+        // === Perubahan penting: pastikan health tidak "meloncat" setelah brush ===
+        // Jika health lebih besar dari clean, turunkan health agar tidak > clean.
+        // Ini berlaku baik setelah brush maupun dalam kondisi lain.
+        if (healthValue > cleanValue) {
+          // Pilih: samakan langsung (mengejar) atau kurangi sedikit. Di sini kita samakan.
+          healthValue = clamp100(cleanValue);
+        }
+
+        // Pesan sesuai toothStage (tetap sama)
+        switch (toothStage) {
+          case 1: fadeInfo("Gulanya nempel di gigimu! Hati-hati ya!"); break;
+          case 2: fadeInfo("Plaknya makin banyak nih… yuk kurangi permennya!"); break;
+          case 3: fadeInfo("Plaknya berubah jadi asam yang bisa membuat gigi rusak!"); break;
+          case 4: fadeInfo("Asamnya makin kuat… hati-hati ya!"); break;
+          case 5: fadeInfo("Lapisan luar gigi mulai melemah, jangan tambah permennya ya!"); break;
+          case 6: fadeInfo("Email gigi makin rapuh… yuk hentikan sebelum bolong!"); break;
+          case 7: fadeInfo("Gigi mulai bolong kecil! Kurangi manisnya!"); break;
+          case 8: fadeInfo("Gigi sudah bolong besar… saatnya mulai ulang ya!"); break;
+          default: fadeInfo("🍭 Gula menempel — kebersihan menurun.");
         }
 
         lastAction = 'sweet';
