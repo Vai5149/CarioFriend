@@ -1,4 +1,4 @@
-/* ui.js - clean UI wiring (no reset, no extra buttons) */
+/* ui.js - clean UI wiring (extra buttons visible only in AR) */
 (() => {
   const info = document.getElementById('infoText');
   const cleanFill = document.getElementById('cleanFill');
@@ -6,7 +6,8 @@
   const buttons = Array.from(document.querySelectorAll('.action-btn'));
   const xrBtn = document.getElementById('xrBtn');
 
-  // NEW extra buttons
+  // NEW: references to extra buttons container + buttons
+  const extraButtons = document.getElementById('extraButtons');
   const resetBtn = document.getElementById('resetBtn');
   const exitBtn = document.getElementById('exitBtn');
 
@@ -15,10 +16,12 @@
   let healthValue = 100;
 
   // counters for repeated actions
+  let lastAction = null;
+  let toothStage = 0;
   let sweetCount = 0;
   let healthyCount = 0;
 
-  // initially buttons disabled until model placed
+  // initially action buttons disabled until model placed
   function setButtonsEnabled(enabled) {
     buttons.forEach(b => {
       b.style.opacity = enabled ? '1' : '0.55';
@@ -26,17 +29,7 @@
       b.tabIndex = enabled ? 0 : -1;
       if (enabled) b.removeAttribute('aria-disabled'); else b.setAttribute('aria-disabled', 'true');
     });
-    // extra buttons (reset/exit) remain interactive even when action buttons are disabled
-    if (resetBtn) {
-      resetBtn.style.opacity = '1';
-      resetBtn.style.pointerEvents = 'auto';
-      resetBtn.tabIndex = 0;
-    }
-    if (exitBtn) {
-      exitBtn.style.opacity = '1';
-      exitBtn.style.pointerEvents = 'auto';
-      exitBtn.tabIndex = 0;
-    }
+    // DO NOT force extraButtons here — visibility is controlled by xr-started/xr-ended
   }
   setButtonsEnabled(false);
 
@@ -54,6 +47,15 @@
       info.style.opacity = 1;
     }, 160);
   }
+
+  // show/hide extra buttons (called on xr-started/xr-ended)
+  function setExtraButtonsVisible(visible) {
+    if (!extraButtons) return;
+    if (visible) extraButtons.classList.add('visible');
+    else extraButtons.classList.remove('visible');
+  }
+  // ensure hidden by default
+  setExtraButtonsVisible(false);
 
   // handle clicks -> request animation in index.js
   buttons.forEach(btn => {
@@ -128,15 +130,19 @@
     updateBars();
   });
 
-  // when XR started: hide Enter AR button
+  // when XR started: hide Enter AR button + show extra buttons
   window.addEventListener('xr-started', () => {
     if (xrBtn) xrBtn.classList.add('hidden');
+    // show reset/exit now AR active
+    setExtraButtonsVisible(true);
     fadeInfo("Arahkan kamera ke model dan tekan salah satu aksi.");
   });
 
-  // when XR ended: show Enter AR again and lock UI
+  // when XR ended: show Enter AR again, hide extra buttons, and lock UI
   window.addEventListener('xr-ended', () => {
     if (xrBtn) xrBtn.classList.remove('hidden');
+    // hide reset/exit after AR ends
+    setExtraButtonsVisible(false);
     toothReady = false;
     setButtonsEnabled(false);
     fadeInfo("AR berhenti. Arahkan kamera ke lantai dan tekan Enter AR.");
@@ -156,20 +162,66 @@
       case 'brush':
         cleanValue = clamp100(cleanValue + 25);
         healthValue = clamp100(healthValue + 25);
-        sweetCount = 0; healthyCount = 0;
+        sweetCount = 0;
+        healthyCount = 0;
+        // jangan reset toothStage di sini
         fadeInfo("🪥 Menggosok gigi: Kebersihan +25%, Kesehatan +25%");
+        lastAction = 'brush';
         break;
-      case 'sweet':
+
+      case 'sweet': {
+        // kebersihan selalu turun 12.5 (langsung)
         cleanValue = clamp100(cleanValue - 12.5);
-        sweetCount++;
-        if (sweetCount >= 2) {
-          sweetCount = 0;
-          healthValue = clamp100(healthValue - 25);
-          fadeInfo("🍭 Terlalu sering makan manis — kesehatan turun 25%!");
+
+        // naik tahap visual/cerita
+        toothStage = (typeof toothStage === 'number') ? toothStage : 0;
+        if (toothStage < 8) toothStage++;
+
+        // Jika aksi sebelumnya adalah 'brush', maka pada sweet pertama
+        // setelah brush kita TIDAK menyentuh health — hanya clean berkurang.
+        // Pada sweet berikutnya (atau jika prevAction != 'brush'), health
+        // "mengejar" clean: kita set health = min(health, clean)
+        if (lastAction === 'brush') {
+          // hanya pesan — health tidak berubah
+          // (gunakan pesan sesuai toothStage)
+          switch (toothStage) {
+            case 1: fadeInfo("Gulanya nempel di gigimu! Hati-hati ya!"); break;
+            case 2: fadeInfo("Plaknya makin banyak nih… yuk kurangi permennya!"); break;
+            case 3: fadeInfo("Plaknya berubah jadi asam yang bisa membuat gigi rusak!"); break;
+            case 4: fadeInfo("Asamnya makin kuat… hati-hati ya!"); break;
+            case 5: fadeInfo("Lapisan luar gigi mulai melemah, jangan tambah permennya ya!"); break;
+            case 6: fadeInfo("Email gigi makin rapuh… yuk hentikan sebelum bolong!"); break;
+            case 7: fadeInfo("Gigi mulai bolong kecil! Kurangi manisnya!"); break;
+            case 8: fadeInfo("Gigi sudah bolong besar… saatnya mulai ulang ya!"); break;
+            default: fadeInfo("🍭 Gula menempel — kebersihan menurun.");
+          }
         } else {
-          fadeInfo("🍭 Gula menempel — kebersihan sedikit menurun.");
+          // tidak langsung setelah brush -> health mengejar clean
+          if (healthValue > cleanValue) {
+            healthValue = clamp100(cleanValue);
+          } else {
+            // opsional: jika health lebih kecil, kita bisa kurangi health sedikit per tekan
+            // healthValue = clamp100(healthValue - 12.5);
+          }
+          // pesan sesuai tahap
+          switch (toothStage) {
+            case 1: fadeInfo("Gulanya nempel di gigimu! Hati-hati ya!"); break;
+            case 2: fadeInfo("Plaknya makin banyak nih… yuk kurangi permennya!"); break;
+            case 3: fadeInfo("Plaknya berubah jadi asam yang bisa membuat gigi rusak!"); break;
+            case 4: fadeInfo("Asamnya makin kuat… hati-hati ya!"); break;
+            case 5: fadeInfo("Lapisan luar gigi mulai melemah, jangan tambah permennya ya!"); break;
+            case 6: fadeInfo("Email gigi makin rapuh… yuk hentikan sebelum bolong!"); break;
+            case 7: fadeInfo("Gigi mulai bolong kecil! Kurangi manisnya!"); break;
+            case 8: fadeInfo("Gigi sudah bolong besar… saatnya mulai ulang ya!"); break;
+            default: fadeInfo("🍭 Gula menempel — kebersihan menurun.");
+          }
         }
+
+        lastAction = 'sweet';
         break;
+      }
+
+
       case 'healthy':
         cleanValue = clamp100(cleanValue + 12.5);
         healthyCount++;
@@ -192,6 +244,7 @@
     healthValue = 100;
     sweetCount = 0;
     healthyCount = 0;
+    toothStage = 0;
     toothReady = false;
     setButtonsEnabled(false);
     updateBars();
