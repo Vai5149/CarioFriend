@@ -149,6 +149,7 @@ canvas {
   width: 80px;
   height: 80px;
   object-fit: contain;
+  cursor: pointer;
 }
 
 #toothStatusText {
@@ -310,10 +311,7 @@ canvas {
   transition: opacity 0.18s ease, transform 0.18s ease;
 }
 
-/*Odontogram */
 /* ---------- Odontogram Modal (pop-up) ---------- */
-#toothStatusIcon { cursor: pointer; } /* pointer saat hover untuk menandakan bisa diklik */
-
 .modal {
   position: fixed;
   inset: 0;

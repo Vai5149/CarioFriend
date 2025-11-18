@@ -421,91 +421,97 @@
     _getState: () => ({ cleanValue, healthValue, sweetCount, healthyCount })
   };
 
+  /* ---------- Odontogram Modal wiring ---------- */
+  (() => {
+    const odontModal = document.getElementById('odontModal');
+    const odontBackdrop = document.getElementById('odontBackdrop');
+    const odontModalImg = document.getElementById('odontModalImg');
+    const odontModalText = document.getElementById('odontModalText');
+    const modalClose = document.getElementById('modalClose');
+
+    if (!odontModal || !odontBackdrop || !odontModalImg || !odontModalText || !modalClose) {
+      // jika elemen belum ada, jangan error
+      return;
+    }
+
+    // helper: open modal (set aria-hidden false)
+    function openOdontModal() {
+      odontModal.setAttribute('aria-hidden', 'false');
+      // fokus ke tombol close agar keyboard users bisa langsung menutup
+      modalClose.focus();
+    }
+
+    // helper: close modal
+    function closeOdontModal() {
+      odontModal.setAttribute('aria-hidden', 'true');
+      // kembalikan fokus ke ikon kecil supaya aksesibilitas tetap baik
+      if (typeof toothStatusIcon !== 'undefined' && toothStatusIcon) toothStatusIcon.focus();
+    }
+
+    // klik ikon kecil -> buka modal (boleh buka walau toothReady false)
+    if (typeof toothStatusIcon !== 'undefined' && toothStatusIcon) {
+      toothStatusIcon.setAttribute('role', 'button');
+      toothStatusIcon.setAttribute('tabindex', '0');
+      toothStatusIcon.addEventListener('click', () => {
+        // sync modal content before open
+        try {
+          if (toothStatusIcon) odontModalImg.src = toothStatusIcon.src;
+          if (toothStatusText) odontModalText.textContent = toothStatusText.textContent;
+        } catch (err) { /* noop */ }
+        openOdontModal();
+      });
+      toothStatusIcon.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); 
+          try {
+            if (toothStatusIcon) odontModalImg.src = toothStatusIcon.src;
+            if (toothStatusText) odontModalText.textContent = toothStatusText.textContent;
+          } catch (err) { /* noop */ }
+          openOdontModal(); 
+        }
+      });
+    }
+
+    // backdrop & close button
+    odontBackdrop.addEventListener('click', closeOdontModal);
+    modalClose.addEventListener('click', closeOdontModal);
+
+    // esc to close
+    window.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape' && odontModal.getAttribute('aria-hidden') === 'false') {
+        closeOdontModal();
+      }
+    });
+
+    // keep modal in sync when updateToothStatus() updates small icon/text:
+    // patch updateToothStatus to also update modal image & text if function is present.
+    if (typeof window.kariesUI !== 'undefined' && typeof window.kariesUI.updateToothStatus === 'function') {
+      const original = window.kariesUI.updateToothStatus;
+      window.kariesUI.updateToothStatus = function(healthKey) {
+        // call original
+        original.call(this, healthKey);
+        // then sync modal content based on current small icon/text
+        try {
+          if (toothStatusIcon) odontModalImg.src = toothStatusIcon.src;
+          if (toothStatusText) odontModalText.textContent = toothStatusText.textContent;
+        } catch (err) {
+          console.warn('Failed to sync odont modal:', err);
+        }
+      };
+    } else {
+      // fallback: also listen to health-changed events and update modal
+      window.addEventListener('health-changed', (e) => {
+        try {
+          if (toothStatusIcon) odontModalImg.src = toothStatusIcon.src;
+          if (toothStatusText) odontModalText.textContent = toothStatusText.textContent;
+        } catch (err) { /* noop */ }
+      });
+    }
+  })();
+
   // initial UI
   updateBars();
   // ensure AR controls hidden initially
   showARControls(false);
   // NEW: Initialize tooth status
   updateToothStatus(null);
-
-  /* ---------- Odontogram Modal wiring ---------- */
-(() => {
-  const odontModal = document.getElementById('odontModal');
-  const odontBackdrop = document.getElementById('odontBackdrop');
-  const odontModalImg = document.getElementById('odontModalImg');
-  const odontModalText = document.getElementById('odontModalText');
-  const modalClose = document.getElementById('modalClose');
-
-  if (!odontModal || !odontBackdrop || !odontModalImg || !odontModalText || !modalClose) {
-    // jika elemen belum ada, jangan error
-    return;
-  }
-
-  // helper: open modal (set aria-hidden false)
-  function openOdontModal() {
-    odontModal.setAttribute('aria-hidden', 'false');
-    // fokus ke tombol close agar keyboard users bisa langsung menutup
-    modalClose.focus();
-  }
-
-  // helper: close modal
-  function closeOdontModal() {
-    odontModal.setAttribute('aria-hidden', 'true');
-    // kembalikan fokus ke ikon kecil supaya aksesibilitas tetap baik
-    if (typeof toothStatusIcon !== 'undefined' && toothStatusIcon) toothStatusIcon.focus();
-  }
-
-  // klik ikon kecil -> buka modal (boleh buka walau toothReady false)
-  if (typeof toothStatusIcon !== 'undefined' && toothStatusIcon) {
-    toothStatusIcon.setAttribute('role', 'button');
-    toothStatusIcon.setAttribute('tabindex', '0');
-    toothStatusIcon.addEventListener('click', () => {
-      openOdontModal();
-    });
-    toothStatusIcon.addEventListener('keydown', (e) => {
-      if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); openOdontModal(); }
-    });
-  }
-
-  // backdrop & close button
-  odontBackdrop.addEventListener('click', closeOdontModal);
-  modalClose.addEventListener('click', closeOdontModal);
-
-  // esc to close
-  window.addEventListener('keydown', (e) => {
-    if (e.key === 'Escape' && odontModal.getAttribute('aria-hidden') === 'false') {
-      closeOdontModal();
-    }
-  });
-
-  // keep modal in sync when updateToothStatus() updates small icon/text:
-  // patch updateToothStatus to also update modal image & text if function is present.
-  // Because updateToothStatus is defined earlier, we monkey-patch it to keep sync.
-  if (typeof window.kariesUI !== 'undefined' && typeof window.kariesUI.updateToothStatus === 'function') {
-    const original = window.kariesUI.updateToothStatus;
-    window.kariesUI.updateToothStatus = function(healthKey) {
-      // call original
-      original.call(this, healthKey);
-      // then sync modal content based on current small icon/text
-      // use current toothStatusIcon.src and toothStatusText.textContent
-      try {
-        odontModalImg.src = toothStatusIcon ? toothStatusIcon.src : odontModalImg.src;
-        odontModalText.textContent = toothStatusText ? toothStatusText.textContent : odontModalText.textContent;
-      } catch (err) {
-        console.warn('Failed to sync odont modal:', err);
-      }
-    };
-  } else {
-    // fallback: also listen to health-changed events and update modal
-    window.addEventListener('health-changed', (e) => {
-      const d = e.detail || {};
-      // try to mirror toothStatusIcon & text
-      try {
-        odontModalImg.src = toothStatusIcon ? toothStatusIcon.src : odontModalImg.src;
-        odontModalText.textContent = toothStatusText ? toothStatusText.textContent : odontModalText.textContent;
-      } catch (err) { /* noop */ }
-    });
-  }
-})();
-
 })();
