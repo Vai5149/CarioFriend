@@ -60,59 +60,45 @@
   // NEW: Function to directly request AR session (tanpa lewat tombol Enter AR)
   async function startARSession() {
     try {
-      // Hide splash screen
       hideSplashScreen();
-      
-      // Langsung panggil requestXRSession dari window (yang ada di index.js)
       if (window.requestXRSession) {
         await window.requestXRSession();
       } else {
-        // Fallback: panggil melalui event
         window.dispatchEvent(new CustomEvent('request-ar-session'));
       }
     } catch (error) {
       console.error('Failed to start AR session:', error);
-      // Jika gagal, tampilkan kembali splash screen
       showSplashScreen();
       alert('Gagal memulai AR: ' + error.message);
     }
   }
 
-  // NEW: Start button click handler
   if (startBtn) {
     startBtn.addEventListener('click', () => {
       startARSession();
     });
   }
 
-  // NEW: Function to update tooth status based on current health model
+  // NEW: Function to update tooth status
   function updateToothStatus(healthKey = null) {
     if (!toothReady || healthKey === null) {
-      // No tooth placed
       toothStatusIcon.src = 'odontogram/odontogram_hilang.png';
       toothStatusText.textContent = 'Gigi tidak ada';
       return;
     }
 
-    // Update based on health key
-    switch(healthKey) {
-      case 100: // gigisehat.glb
+    switch (healthKey) {
+      case 100:
+      case 75:
         toothStatusIcon.src = 'odontogram/odontogram_normal.png';
         toothStatusText.textContent = 'Odontogram: Gigi sehat';
         break;
-      case 75: // gigiplak.glb
-        toothStatusIcon.src = 'odontogram/odontogram_normal.png';
-        toothStatusText.textContent = 'Odontogram: Gigi sehat';
-        break;
-      case 50: // gigiasam.glb
+      case 50:
+      case 25:
         toothStatusIcon.src = 'odontogram/odontogram_karang.png';
         toothStatusText.textContent = 'Odontogram: Gigi karang';
         break;
-      case 25: // gigidemineralisasi.glb
-        toothStatusIcon.src = 'odontogram/odontogram_karang.png';
-        toothStatusText.textContent = 'Odontogram: Gigi karang';
-        break;
-      case 0: // gigikaries.glb
+      case 0:
         toothStatusIcon.src = 'odontogram/odontogram_karies.png';
         toothStatusText.textContent = 'Odontogram: Gigi karies';
         break;
@@ -122,85 +108,60 @@
     }
   }
 
-  // NEW: Function to show/hide AR UI elements
   function showARUI(show) {
     const elements = [barsContainer, toothStatusContainer, buttonsContainer, infoContainer];
-    
-    elements.forEach(element => {
-      if (element) {
-        if (show) {
-          element.classList.add('visible-ar');
-        } else {
-          element.classList.remove('visible-ar');
-        }
-      }
+    elements.forEach(el => {
+      if (!el) return;
+      if (show) el.classList.add('visible-ar');
+      else el.classList.remove('visible-ar');
     });
   }
 
-  // initially buttons disabled until model placed; extra/scale hidden (CSS handles hidden by default)
   function setButtonsEnabled(enabled) {
-    buttons.forEach(b => {
+    buttons.forEach(btn => {
+      btn.style.opacity = enabled ? '1' : '0.55';
+      btn.style.pointerEvents = enabled ? 'auto' : 'none';
+      btn.tabIndex = enabled ? 0 : -1;
+      if (enabled) btn.removeAttribute('aria-disabled');
+      else btn.setAttribute('aria-disabled', 'true');
+    });
+
+    [scaleUpBtn, scaleDownBtn].forEach(b => {
+      if (!b) return;
       b.style.opacity = enabled ? '1' : '0.55';
       b.style.pointerEvents = enabled ? 'auto' : 'none';
       b.tabIndex = enabled ? 0 : -1;
-      if (enabled) b.removeAttribute('aria-disabled'); else b.setAttribute('aria-disabled', 'true');
+      if (enabled) b.removeAttribute('aria-disabled');
+      else b.setAttribute('aria-disabled', 'true');
     });
-    // scale buttons mirror action-buttons (only usable when model placed)
-    if (scaleUpBtn) {
-      scaleUpBtn.style.opacity = enabled ? '1' : '0.55';
-      scaleUpBtn.style.pointerEvents = enabled ? 'auto' : 'none';
-      scaleUpBtn.tabIndex = enabled ? 0 : -1;
-      if (enabled) scaleUpBtn.removeAttribute('aria-disabled'); else scaleUpBtn.setAttribute('aria-disabled', 'true');
-    }
-    if (scaleDownBtn) {
-      scaleDownBtn.style.opacity = enabled ? '1' : '0.55';
-      scaleDownBtn.style.pointerEvents = enabled ? 'auto' : 'none';
-      scaleDownBtn.tabIndex = enabled ? 0 : -1;
-      if (enabled) scaleDownBtn.removeAttribute('aria-disabled'); else scaleDownBtn.setAttribute('aria-disabled', 'true');
-    }
-
-    // NOTE: Reset / Exit visibility & interactivity are controlled by inXR + CSS class.
-    // Do NOT force them here; they become interactive when inXR === true and container has .visible-controls.
   }
+
   setButtonsEnabled(false);
 
-  // helpers to show/hide AR-only controls
   function showARControls(show) {
     inXR = !!show;
+
     if (show) {
-      if (extraButtonsContainer) extraButtonsContainer.classList.add('visible-controls');
-      if (scaleButtonsContainer) scaleButtonsContainer.classList.add('visible-controls');
-      // NEW: Show AR UI elements
+      extraButtonsContainer.classList.add('visible-controls');
+      scaleButtonsContainer.classList.add('visible-controls');
       showARUI(true);
     } else {
-      if (extraButtonsContainer) extraButtonsContainer.classList.remove('visible-controls');
-      if (scaleButtonsContainer) scaleButtonsContainer.classList.remove('visible-controls');
-      // NEW: Hide AR UI elements
+      extraButtonsContainer.classList.remove('visible-controls');
+      scaleButtonsContainer.classList.remove('visible-controls');
       showARUI(false);
-    }
-    // When hiding AR controls, ensure they can't be focused or clicked
-    if (!show) {
-      if (resetBtn) { resetBtn.tabIndex = -1; resetBtn.setAttribute('aria-hidden', 'true'); }
-      if (exitBtn)  { exitBtn.tabIndex = -1;  exitBtn.setAttribute('aria-hidden', 'true'); }
-      if (scaleUpBtn) { scaleUpBtn.tabIndex = -1; scaleUpBtn.setAttribute('aria-hidden', 'true'); }
-      if (scaleDownBtn) { scaleDownBtn.tabIndex = -1; scaleDownBtn.setAttribute('aria-hidden', 'true'); }
-    } else {
-      if (resetBtn) { resetBtn.tabIndex = 0; resetBtn.removeAttribute('aria-hidden'); }
-      if (exitBtn)  { exitBtn.tabIndex = 0;  exitBtn.removeAttribute('aria-hidden'); }
-      // scale buttons remain controlled by setButtonsEnabled (enabled only when model placed)
-      if (scaleUpBtn) scaleUpBtn.removeAttribute('aria-hidden');
-      if (scaleDownBtn) scaleDownBtn.removeAttribute('aria-hidden');
     }
   }
 
-  // UI helpers
-  function clamp100(v) { return Math.max(0, Math.min(100, Math.round(v * 100) / 100)); }
-  function updateBars() {
-    if (cleanFill) cleanFill.style.width = clamp100(cleanValue) + "%";
-    if (healthFill) healthFill.style.width = clamp100(healthValue) + "%";
+  function clamp100(v) {
+    return Math.max(0, Math.min(100, Math.round(v * 100) / 100));
   }
+
+  function updateBars() {
+    cleanFill.style.width = clamp100(cleanValue) + '%';
+    healthFill.style.width = clamp100(healthValue) + '%';
+  }
+
   function fadeInfo(text) {
-    if (!info) return;
     info.style.opacity = 0;
     setTimeout(() => {
       info.textContent = text;
@@ -208,152 +169,129 @@
     }, 160);
   }
 
-  // handle clicks -> request animation in index.js
+  // Action buttons
   buttons.forEach(btn => {
     btn.addEventListener('click', () => {
-      const action = btn.dataset.action;
       if (!toothReady) {
-        fadeInfo("Model belum siap. Arahkan kamera & tunggu model muncul.");
+        fadeInfo('Model belum siap. Arahkan kamera & tunggu model muncul.');
         return;
       }
-      // request AR to run interactor anim; UI locks buttons until 'interactor-finished'
+
+      const action = btn.dataset.action;
       setButtonsEnabled(false);
-      fadeInfo("Memainkan animasi...");
+      fadeInfo('Memainkan animasi...');
       window.dispatchEvent(new CustomEvent('ui-action-request', { detail: { action } }));
     });
   });
 
-  // Scale buttons -> dispatch scale-request
+  // Scale buttons
   if (scaleUpBtn) {
     scaleUpBtn.addEventListener('click', () => {
       if (!toothReady) {
-        fadeInfo("Tempatkan model terlebih dahulu untuk mengubah ukuran.");
+        fadeInfo('Tempatkan model terlebih dahulu untuk mengubah ukuran.');
         return;
       }
       window.dispatchEvent(new CustomEvent('scale-request', { detail: { dir: +1 } }));
     });
   }
+
   if (scaleDownBtn) {
     scaleDownBtn.addEventListener('click', () => {
       if (!toothReady) {
-        fadeInfo("Tempatkan model terlebih dahulu untuk mengubah ukuran.");
+        fadeInfo('Tempatkan model terlebih dahulu untuk mengubah ukuran.');
         return;
       }
       window.dispatchEvent(new CustomEvent('scale-request', { detail: { dir: -1 } }));
     });
   }
 
-  // Reset button -> dispatch reset & update UI state
+  // Reset button
   if (resetBtn) {
     resetBtn.addEventListener('click', () => {
-      // only allow when inXR
-      if (!inXR) { fadeInfo("Fitur ini hanya tersedia saat berada di AR."); return; }
-      // inform AR system to reset scene
+      if (!inXR) {
+        fadeInfo('Fitur ini hanya tersedia saat berada di AR.');
+        return;
+      }
       window.dispatchEvent(new CustomEvent('reset'));
-      // reset local UI values & lock actions until model placed again
       resetUIState();
     });
   }
 
-  // Exit AR button -> request exit; index.js will handle ending session
+  // Exit AR button
   if (exitBtn) {
     exitBtn.addEventListener('click', () => {
-      if (!inXR) { fadeInfo("Fitur ini hanya tersedia saat berada di AR."); return; }
+      if (!inXR) {
+        fadeInfo('Fitur ini hanya tersedia saat berada di AR.');
+        return;
+      }
       window.dispatchEvent(new CustomEvent('request-exit-ar'));
-      fadeInfo("Keluar AR...");
-      
-      // NEW: Langsung show splash screen tanpa delay
+      fadeInfo('Keluar AR...');
       showSplashScreen();
     });
   }
 
-  // when an interactor animation finished, index.js dispatches this event
-  // { action, status }
-  window.addEventListener('interactor-finished', (e) => {
-    const d = e.detail || {};
-    const action = d.action;
-    const status = d.status;
+  // Interactor finished
+  window.addEventListener('interactor-finished', e => {
+    const { action, status } = e.detail || {};
+
     if (status !== 'ok') {
-      fadeInfo(status === 'skipped' ? "Animasi tidak dijalankan." : "Terjadi error animasi.");
-      // re-enable unless terminal; index.js or other logic may emit health-changed next
-      setTimeout(() => {
-        setButtonsEnabled(true);
-      }, 300);
+      fadeInfo(status === 'skipped' ? 'Animasi tidak dijalankan.' : 'Terjadi error animasi.');
+      setTimeout(() => setButtonsEnabled(true), 300);
       return;
     }
 
-    // Dispatch last action so index.js knows which button triggered this animation
-    // (Important: we dispatch BEFORE performActionEffect so index.js can choose message
-    //  based on both lastAction and the updated health.)
     window.dispatchEvent(new CustomEvent('ui-last-action', { detail: { action } }));
 
-    // After a successful animation, UI logic updates local state and tells index.js to swap model
     performActionEffect(action);
-
-    // update bars and inform other systems (index.js listens to health-changed to swap model)
     updateBars();
-    window.dispatchEvent(new CustomEvent('health-changed', { detail: { health: healthValue, clean: cleanValue } }));
 
-    // check terminal condition
+    window.dispatchEvent(
+      new CustomEvent('health-changed', { detail: { health: healthValue, clean: cleanValue } })
+    );
+
     if (cleanValue <= 0 && healthValue <= 0) {
       setButtonsEnabled(false);
-      fadeInfo("⚠️ Gigi sudah rusak parah dan terinfeksi. Segera konsultasikan ke dokter gigi! Tekan tombol RESET untuk memulai ulang.");
-      // keep Enter AR handled by xr-ended when session ends
+      fadeInfo(
+        '⚠️ Gigi sudah rusak parah dan terinfeksi. Segera konsultasikan ke dokter gigi! Tekan tombol RESET untuk memulai ulang.'
+      );
     } else {
       setButtonsEnabled(true);
     }
   });
 
-  // enable buttons when model placed
   window.addEventListener('model-placed', () => {
     toothReady = true;
-    fadeInfo("Model gigi siap! Pilih aksi di bawah ini.");
+    fadeInfo('Model gigi siap! Pilih aksi di bawah ini.');
     setButtonsEnabled(true);
     updateBars();
-    // NEW: Update tooth status to initial healthy state
     updateToothStatus(100);
   });
 
-  // when XR started: hide Enter AR button and show AR-only controls
   window.addEventListener('xr-started', () => {
-    // XR button sudah hidden dari awal, jadi tidak perlu diubah
-    fadeInfo("Arahkan kamera ke lantai hingga muncul lingkaran hijau dan tekan lingkaran untuk memunculkan gigi!.");
-
-    // show AR controls (scale + extra) and AR UI elements
+    fadeInfo(
+      'Arahkan kamera ke lantai hingga muncul lingkaran hijau dan tekan lingkaran untuk memunculkan gigi!.'
+    );
     showARControls(true);
-
-    // note: action buttons still controlled by model-placed (so they remain disabled until model is placed)
   });
 
-  // when XR ended: langsung kembali ke splash screen tanpa show tombol Enter AR
   window.addEventListener('xr-ended', () => {
     toothReady = false;
     setButtonsEnabled(false);
-
-    // hide AR-only controls and AR UI elements
     showARControls(false);
-    
-    // NEW: Reset tooth status when AR ends
     updateToothStatus(null);
-    
-    // NEW: Langsung show splash screen tanpa menampilkan tombol Enter AR
     showSplashScreen();
   });
 
-  // local state changes (if some other part dispatches health-changed directly)
-  window.addEventListener('health-changed', (e) => {
+  window.addEventListener('health-changed', e => {
     const d = e.detail || {};
     if (typeof d.health === 'number') {
       healthValue = d.health;
-      // NEW: Update tooth status based on health value
-      const healthKey = getHealthKeyFromValue(healthValue);
-      updateToothStatus(healthKey);
+      updateToothStatus(getHealthKeyFromValue(healthValue));
     }
     if (typeof d.clean === 'number') cleanValue = d.clean;
     updateBars();
   });
 
-  // NEW: Helper function to convert health value to health key
   function getHealthKeyFromValue(health) {
     if (health >= 100) return 100;
     if (health >= 75) return 75;
@@ -362,43 +300,42 @@
     return 0;
   }
 
-  // apply the "game logic" to UI values AFTER animations finish (called by interactor-finished)
   function performActionEffect(action) {
-    switch(action) {
+    switch (action) {
       case 'brush':
         cleanValue = clamp100(cleanValue + 25);
         healthValue = clamp100(healthValue + 25);
-        sweetCount = 0; healthyCount = 0;
-        fadeInfo("🪥 Menggosok gigi: Kebersihan +25%, Kesehatan +25%");
+        sweetCount = 0;
+        healthyCount = 0;
+        fadeInfo('🪥 Menggosok gigi: Kebersihan +25%, Kesehatan +25%');
         break;
+
       case 'sweet':
         cleanValue = clamp100(cleanValue - 12.5);
         sweetCount++;
         if (sweetCount >= 2) {
           sweetCount = 0;
           healthValue = clamp100(healthValue - 25);
-          fadeInfo("🍭 Terlalu sering makan manis — kesehatan turun 25%!");
+          fadeInfo('🍭 Terlalu sering makan manis — kesehatan turun 25%!');
         } else {
-          fadeInfo("🍭 Gula menempel — kebersihan sedikit menurun.");
+          fadeInfo('🍭 Gula menempel — kebersihan sedikit menurun.');
         }
         break;
+
       case 'healthy':
         cleanValue = clamp100(cleanValue + 12.5);
         healthyCount++;
         if (healthyCount >= 2) {
           healthyCount = 0;
           healthValue = clamp100(healthValue + 25);
-          fadeInfo("🥦 Makanan sehat membantu — kesehatan naik 25%!");
+          fadeInfo('🥦 Makanan sehat membantu — kesehatan naik 25%!');
         } else {
-          fadeInfo("🥗 Makanan sehat menambah kebersihan sedikit.");
+          fadeInfo('🥗 Makanan sehat menambah kebersihan sedikit.');
         }
         break;
-      default:
-        console.warn('Unknown action', action);
     }
   }
 
-  // NEW: reset local UI state
   function resetUIState() {
     cleanValue = 100;
     healthValue = 100;
@@ -407,21 +344,18 @@
     toothReady = false;
     setButtonsEnabled(false);
     updateBars();
-    // NEW: Reset tooth status
     updateToothStatus(null);
   }
 
-  // expose for debugging
   window.kariesUI = {
     setButtonsEnabled,
     updateBars,
     fadeInfo,
-    updateToothStatus, // NEW: expose tooth status function
-    startARSession, // NEW: expose start AR function
-    _getState: () => ({ cleanValue, healthValue, sweetCount, healthyCount })
+    updateToothStatus,
+    startARSession
   };
 
-  /* ---------- Odontogram Modal wiring ---------- */
+  /* ---------------- Odontogram Modal wiring ---------------- */
   (() => {
     const odontModal = document.getElementById('odontModal');
     const odontBackdrop = document.getElementById('odontBackdrop');
@@ -429,89 +363,61 @@
     const odontModalText = document.getElementById('odontModalText');
     const modalClose = document.getElementById('modalClose');
 
-    if (!odontModal || !odontBackdrop || !odontModalImg || !odontModalText || !modalClose) {
-      // jika elemen belum ada, jangan error
-      return;
-    }
+    if (!odontModal) return;
 
-    // helper: open modal (set aria-hidden false)
-    function openOdontModal() {
+    function openOdontogram() {
       odontModal.setAttribute('aria-hidden', 'false');
-      // fokus ke tombol close agar keyboard users bisa langsung menutup
+      toothStatusIcon.setAttribute('aria-expanded', 'true');
       modalClose.focus();
     }
 
-    // helper: close modal
-    function closeOdontModal() {
+    function closeOdontogram() {
       odontModal.setAttribute('aria-hidden', 'true');
-      // kembalikan fokus ke ikon kecil supaya aksesibilitas tetap baik
-      if (typeof toothStatusIcon !== 'undefined' && toothStatusIcon) toothStatusIcon.focus();
+      toothStatusIcon.setAttribute('aria-expanded', 'false');
+      toothStatusIcon.focus();
     }
 
-    // klik ikon kecil -> buka modal (boleh buka walau toothReady false)
-    if (typeof toothStatusIcon !== 'undefined' && toothStatusIcon) {
-      toothStatusIcon.setAttribute('role', 'button');
-      toothStatusIcon.setAttribute('tabindex', '0');
-      toothStatusIcon.addEventListener('click', () => {
-        // sync modal content before open
-        try {
-          if (toothStatusIcon) odontModalImg.src = toothStatusIcon.src;
-          if (toothStatusText) odontModalText.textContent = toothStatusText.textContent;
-        } catch (err) { /* noop */ }
-        openOdontModal();
-      });
-      toothStatusIcon.addEventListener('keydown', (e) => {
-        if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); 
-          try {
-            if (toothStatusIcon) odontModalImg.src = toothStatusIcon.src;
-            if (toothStatusText) odontModalText.textContent = toothStatusText.textContent;
-          } catch (err) { /* noop */ }
-          openOdontModal(); 
-        }
-      });
-    }
+    toothStatusIcon.setAttribute('role', 'button');
+    toothStatusIcon.setAttribute('tabindex', '0');
+    toothStatusIcon.setAttribute('aria-controls', 'odontModal');
+    toothStatusIcon.setAttribute('aria-expanded', 'false');
 
-    // backdrop & close button
-    odontBackdrop.addEventListener('click', closeOdontModal);
-    modalClose.addEventListener('click', closeOdontModal);
+    toothStatusIcon.addEventListener('click', () => {
+      odontModalImg.src = toothStatusIcon.src;
+      odontModalText.textContent = toothStatusText.textContent;
+      openOdontogram();
+    });
 
-    // esc to close
-    window.addEventListener('keydown', (e) => {
-      if (e.key === 'Escape' && odontModal.getAttribute('aria-hidden') === 'false') {
-        closeOdontModal();
+    toothStatusIcon.addEventListener('keydown', e => {
+      if (e.key === 'Enter' || e.key === ' ') {
+        e.preventDefault();
+        odontModalImg.src = toothStatusIcon.src;
+        odontModalText.textContent = toothStatusText.textContent;
+        openOdontogram();
       }
     });
 
-    // keep modal in sync when updateToothStatus() updates small icon/text:
-    // patch updateToothStatus to also update modal image & text if function is present.
-    if (typeof window.kariesUI !== 'undefined' && typeof window.kariesUI.updateToothStatus === 'function') {
+    odontBackdrop.addEventListener('click', closeOdontogram);
+    modalClose.addEventListener('click', closeOdontogram);
+
+    window.addEventListener('keydown', e => {
+      if (e.key === 'Escape' && odontModal.getAttribute('aria-hidden') === 'false') {
+        closeOdontogram();
+      }
+    });
+
+    // Keep modal content synced with icon updates
+    if (typeof window.kariesUI.updateToothStatus === 'function') {
       const original = window.kariesUI.updateToothStatus;
-      window.kariesUI.updateToothStatus = function(healthKey) {
-        // call original
+      window.kariesUI.updateToothStatus = healthKey => {
         original.call(this, healthKey);
-        // then sync modal content based on current small icon/text
-        try {
-          if (toothStatusIcon) odontModalImg.src = toothStatusIcon.src;
-          if (toothStatusText) odontModalText.textContent = toothStatusText.textContent;
-        } catch (err) {
-          console.warn('Failed to sync odont modal:', err);
-        }
+        odontModalImg.src = toothStatusIcon.src;
+        odontModalText.textContent = toothStatusText.textContent;
       };
-    } else {
-      // fallback: also listen to health-changed events and update modal
-      window.addEventListener('health-changed', (e) => {
-        try {
-          if (toothStatusIcon) odontModalImg.src = toothStatusIcon.src;
-          if (toothStatusText) odontModalText.textContent = toothStatusText.textContent;
-        } catch (err) { /* noop */ }
-      });
     }
   })();
 
-  // initial UI
   updateBars();
-  // ensure AR controls hidden initially
   showARControls(false);
-  // NEW: Initialize tooth status
   updateToothStatus(null);
 })();
