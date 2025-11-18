@@ -94,10 +94,9 @@
   // ---------- stage image logic ----------
   function chooseStageImageFilename(health, modelPlaced) {
     // if model not placed/detected -> miss
-    if (!modelPlaced) return 'icons/miss.png';
-
-    // model placed -> choose by health
-    if (health >= 75) {
+    if (!modelPlaced) {
+      return 'icons/miss.png';
+    } else if (health >= 75) {
       // stage 1 & 2 -> normal
       return 'icons/gigi normal.png'; 
     } else if (health >= 50) {
