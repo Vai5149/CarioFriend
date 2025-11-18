@@ -5,12 +5,9 @@
   const healthFill = document.getElementById('healthFill');
   const buttons = Array.from(document.querySelectorAll('.action-btn'));
   const xrBtn = document.getElementById('xrBtn');
-
-  // STAGE INDICATOR elements (add near other DOM queries)
-  const stageIndicator = document.getElementById('stageIndicator');
-  const stageRing = stageIndicator ? stageIndicator.querySelector('#ring') : null;
-  const stageCore = stageIndicator ? stageIndicator.querySelector('#core') : null;
-
+  
+  // STAGE image element
+  const stageImg = document.getElementById('stageImg'); // may be null if HTML not updated
 
   // NEW extra buttons
   const resetBtn = document.getElementById('resetBtn');
@@ -93,38 +90,34 @@
     if (cleanFill) cleanFill.style.width = clamp100(cleanValue) + "%";
     if (healthFill) healthFill.style.width = clamp100(healthValue) + "%";
   }
-  // ---------- Stage indicator logic ----------
-function getStageKeyFromHealth(h) {
-  if (h >= 100) return 1;   // semua putih
-  if (h >= 75)  return 2;   // pinggir kuning, tengah putih
-  if (h >= 50)  return 3;   // pinggir oranye, tengah kuning
-  if (h >= 25)  return 4;   // pinggir oranye, tengah oranye
-  return 5;                 // tengah hitam, pinggir oranye
-}
 
-const stageColors = {
-  1: { ring: '#ffffff', core: '#ffffff', frame: '#222' },
-  2: { ring: '#FFC107', core: '#ffffff', frame: '#222' },   // kuning ring
-  3: { ring: '#FF9800', core: '#FFC107', frame: '#222' },   // orange ring, yellow core
-  4: { ring: '#FF9800', core: '#FF9800', frame: '#222' },   // both orange
-  5: { ring: '#FF9800', core: '#000000', frame: '#222' }    // core black
-};
+  // ---------- stage image logic ----------
+  function chooseStageImageFilename(health, modelPlaced) {
+    // if model not placed/detected -> miss
+    if (!modelPlaced) return 'miss.png';
 
-function setStageColors(stageKey) {
-  const c = stageColors[stageKey] || stageColors[1];
-  try {
-    if (stageRing) stageRing.style.fill = c.ring;
-    if (stageCore) stageCore.style.fill = c.core;
-    // frame left as dark for contrast
-    const frame = stageIndicator ? stageIndicator.querySelector('#frame') : null;
-    if (frame) frame.style.fill = c.frame;
-  } catch (e) { /* ignore */ }
-}
+    // model placed -> choose by health
+    if (health >= 75) {
+      // stage 1 & 2 -> normal
+      return 'gigi normal.png';
+    } else if (health >= 50) {
+      // stage 3 -> karang
+      return 'gigikarang.png';
+    } else {
+      // stage 4 & 5 -> karies
+      return 'gigi karies.png';
+    }
+  }
 
-function updateStageIndicatorFromHealth(h) {
-  setStageColors(getStageKeyFromHealth(h));
-}
-// ---------- end stage logic ----------
+  function updateStageImage(health, modelPlaced) {
+    if (!stageImg) return;
+    const file = chooseStageImageFilename(typeof health === 'number' ? health : 100, !!modelPlaced);
+    // encode in case filename has spaces
+    stageImg.src = encodeURI(file);
+    // optional: update alt/title for accessibility
+    stageImg.alt = 'Stage: ' + file;
+  }
+  // ---------- end stage image logic ----------
 
   function fadeInfo(text) {
     if (!info) return;
@@ -234,6 +227,8 @@ function updateStageIndicatorFromHealth(h) {
     fadeInfo("Model gigi siap! Pilih aksi di bawah ini.");
     setButtonsEnabled(true);
     updateBars();
+    updateStageIndicatorFromHealth(healthValue);
+    updateStageImage(healthValue, true); // <-- tambahkan ini
   });
 
   // when XR started: hide Enter AR button and show AR-only controls
@@ -251,7 +246,9 @@ function updateStageIndicatorFromHealth(h) {
   window.addEventListener('xr-ended', () => {
     if (xrBtn) xrBtn.classList.remove('hidden');
     toothReady = false;
+    updateStageImage(healthValue, false);
     setButtonsEnabled(false);
+    updateStageImage(healthValue, false);
     fadeInfo("AR berhenti. Arahkan kamera ke lantai dan tekan Enter AR.");
 
     // hide AR-only controls
@@ -264,8 +261,8 @@ function updateStageIndicatorFromHealth(h) {
     if (typeof d.clean === 'number') cleanValue = d.clean;
     if (typeof d.health === 'number') healthValue = d.health;
     updateBars();
-    // setelah updateBars();
     updateStageIndicatorFromHealth(healthValue);
+    updateStageImage(healthValue, toothReady);
   });
 
   // apply the "game logic" to UI values AFTER animations finish (called by interactor-finished)
@@ -328,4 +325,8 @@ function updateStageIndicatorFromHealth(h) {
   updateBars();
   // ensure AR controls hidden initially
   showARControls(false);
+  // sync initial
+  updateStageImage(healthValue, toothReady);
+  updateStageIndicatorFromHealth(healthValue);
+  updateStageImage(healthValue, toothReady);
 })();
