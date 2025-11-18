@@ -94,18 +94,18 @@
   // ---------- stage image logic ----------
   function chooseStageImageFilename(health, modelPlaced) {
     // if model not placed/detected -> miss
-    if (!modelPlaced) return 'miss.png';
+    if (!modelPlaced) return 'icons/miss.png';
 
     // model placed -> choose by health
     if (health >= 75) {
       // stage 1 & 2 -> normal
-      return 'gigi normal.png';
+      return 'icons/gigi normal.png'; 
     } else if (health >= 50) {
       // stage 3 -> karang
-      return 'gigikarang.png';
+      return 'icons/gigikarang.png';
     } else {
       // stage 4 & 5 -> karies
-      return 'gigi karies.png';
+      return 'icons/gigi karies.png';
     }
   }
 
