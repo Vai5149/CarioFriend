@@ -1,0 +1,244 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>AR / VR Landing Page</title>
+
+  <!-- Google Fonts -->
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&family=Poppins:wght@600;700&display=swap" rel="stylesheet">
+
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+  <!-- NAVBAR -->
+  <header class="navbar">
+    <div class="nav-inner">
+      <div class="brand" id="nav-logo" tabindex="0">AR•VR</div>
+
+      <nav class="nav-links" id="navLinks">
+        <a href="#welcome" data-target="welcome" class="nav-link active">Welcome</a>
+        <a href="#main" data-target="main" class="nav-link">Menu Utama</a>
+      </nav>
+
+      <button id="hamburger" class="hamburger" aria-label="Open menu" aria-expanded="false">
+        <span></span><span></span><span></span>
+      </button>
+    </div>
+  </header>
+
+  <!-- SETTINGS PANEL -->
+<div id="settingsPanel" class="settings-panel">
+  <div class="settings-box">
+    <h2>Settings</h2>
+
+    <label class="toggle-row">
+      <span>Dark Mode</span>
+      <input type="checkbox" id="toggleDark">
+    </label>
+
+    <button id="closeSettings" class="close-btn">Tutup</button>
+  </div>
+</div>
+
+
+
+  <!-- SECTIONS -->
+  <main class="stage">
+
+    <!-- WELCOME -->
+    <section id="welcome" class="section active welcome-page" aria-labelledby="welcomeTitle" tabindex="-1">
+
+  <!-- VIDEO BACKGROUND -->
+  <video class="welcome-video" autoplay muted loop playsinline>
+    <source src="gigiloop.mp4" type="video/mp4">
+  </video>
+
+  <div class="content">
+    <img src="Untu Beta.png" alt="Logo" class="welcome-logo">
+    <h1 id="welcomeTitle" class="title">Cariofriends</h1>
+    <p class="lead">Klik di mana saja untuk mulai</p>
+  </div>
+
+</section>
+
+
+
+    <!-- MAIN -->
+    <section id="main" class="section" aria-labelledby="mainTitle" tabindex="-1">
+      <div class="bg-blobs blob-main"></div>
+      <div class="content">
+        <h2 id="mainTitle" class="title">Apa itu Cariofriends?</h2>
+        <p class="lead">CARIOFRIENDS adalah tempat bermain yang membantu kamu belajar bagaimana gigi berlubang terjadi dan cara merawatnya.<br>
+          Kamu bisa melihat dan mencoba langsung bagaimana merawat gigi lewat dunia nyata (AR) atau masuk ke dunia virtual (VR)</p>
+        <div class="actions">
+          <button class="btn btn-primary" data-action="goto" data-target="mode">Ayo Mulai</button>
+        </div>
+      </div>
+
+      <!-- FLOATING NAV -->
+      <div class="floating-nav">
+        <button class="float-btn" id="btnSettings" title="Settings">⚙️</button>
+        <button class="float-btn" id="btnCredit" title="Credits">©</button>
+        <button class="float-btn" id="btnVolume" title="Toggle Volume">🔊</button>
+      </div>
+
+       <div class="tiny">
+          <button class="back-btn" data-action="goto" data-target="welcome" aria-label="Back to welcome">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
+              <path d="M15 18l-6-6 6-6" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+          </button>
+        </div>
+      </div>
+    </section>
+
+
+    <!-- MODE -->
+    <section id="mode" class="section" aria-labelledby="modeTitle" tabindex="-1">
+      <div class="bg-blobs blob-mode"></div>
+      <div class="content">
+        <h3 id="modeTitle" class="title">Menu Utama</h3>
+        <p class="lead">Pilih mode yang ingin kamu coba.</p>
+
+        <div class="cards">
+          <article class="card">
+            <div class="card-icon">🔎</div>
+            <h3>Augmented Reality</h3>
+            <p>Di Mode AR, kamu bisa melihat model gigi 3D langsung di dunia nyata lewat kamera!</p>
+            <div class="card-actions">
+              <button class="btn btn-secondary" data-action="goto" data-target="ar">Masuk AR</button>
+            </div>
+          </article>
+
+          <article class="card">
+            <div class="card-icon">🕶️</div>
+            <h3>Virtual Reality</h3>
+            <p>Di Mode VR, kamu masuk ke dunia virtual yang penuh petualangan tentang gigi!</p>
+            <div class="card-actions">
+              <button class="btn btn-secondary" data-action="goto" data-target="vr">Masuk VR</button>
+            </div>
+          </article>
+        </div>
+
+        <div class="tiny">
+          <button class="back-btn" data-action="goto" data-target="main" aria-label="Back to main">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
+              <path d="M15 18l-6-6 6-6" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+          </button>
+        </div>
+      </div>
+    </section>
+
+
+    <!-- AR -->
+    <section id="ar" class="section" aria-labelledby="arTitle" tabindex="-1">
+      <div class="bg-blobs blob-ar"></div>
+      <div class="content">
+        <h2 id="arTitle" class="title">AR Mode</h2>
+        <p class="lead">
+          Augmented Reality memungkinkan Anda menambahkan elemen digital ke dunia nyata.<br>
+          Aktifkan kamera Anda dan mulai menjelajah.
+        </p>
+
+        <div class="ar-preview">
+          <div class="preview-box">
+            <div class="preview-text">Preview AR (placeholder)</div>
+          </div>
+        </div>
+
+        <div class="actions">
+          <button class="btn btn-secondary" onclick="window.location.href='index.html'">Masuk AR</button>
+          <button class="btn btn-outline" data-action="goto" data-target="mode">Kembali</button>
+        </div>
+      </div>
+    </section>
+
+
+    <!-- VR -->
+    <section id="vr" class="section" aria-labelledby="vrTitle" tabindex="-1">
+      <div class="bg-blobs blob-vr"></div>
+      <div class="content">
+        <h2 id="vrTitle" class="title">VR Mode</h2>
+        <p class="lead">
+          Virtual Reality membawa Anda ke dunia yang sepenuhnya imersif.
+        </p>
+
+        <div class="vr-preview">
+          <div class="preview-box">
+            <div class="preview-text">Preview VR (placeholder)</div>
+          </div>
+        </div>
+
+        <div class="actions">
+          <button class="btn btn-primary" id="startVR">Mulai VR</button>
+          <button class="btn btn-outline" data-action="goto" data-target="mode">Kembali</button>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <script src="script.js" defer></script>
+
+  <!-- CREDIT PANEL -->
+<div id="creditPanel" class="credit-panel">
+  <div class="credit-box">
+
+    <button class="close-credit" id="closeCredit">✖</button>
+
+    <h2>Credits</h2>
+    <p class="sub">Tim di balik aplikasi ini</p>
+
+    <div class="credit-item">
+       <h3 class="credit-section-title">Development Team</h3>
+
+    <div class="credit-block">
+      <p>‎ </p>
+      <p class="credit-role">Team AR</p>
+    </div>
+
+    <div class="credit-block">
+      <p class="credit-role">Project Manager & Lead Programmer & UI/UX Designer</p>
+      <p class="credit-name">•Miranda Rizky Prasetya•</p>
+      <p>‎ </p>
+    </div>
+
+    <div class="credit-block">
+      <p class="credit-role">Front-End Developer</p>
+      <p class="credit-name">•Ayman Nabil Madani•</p>
+      <p>‎ </p>
+    </div>
+
+    <div class="credit-block">
+      <p class="credit-role">Interaction Designer</p>
+      <p class="credit-name">•Raditya Caesar Abrar Athallah•</p>
+      <p>‎ </p>
+    </div>
+
+    <div class="credit-block">
+      <p class="credit-role">3D Artist & Icon Artist</p>
+      <p class="credit-name">•Kenzie Wistara Dahayu•</p>
+      <p class="credit-name">•Shaunee Dean Maxentia•</p>
+      <p>‎ </p>
+    </div>
+
+    <div class="credit-block">
+      <p class="credit-role">Technical Writer & Research</p>
+      <p class="credit-name">•Muhammad Rashid Ihsanuddin Anriko•</p>              
+
+      <h4>Team VR</h4>
+    </div>
+
+    <div class="credit-item">
+      <h3>Version</h3>
+      <p>1.0.0</p>
+    </div>
+
+  </div>
+</div>
+
+</body>
+</html>
