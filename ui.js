@@ -91,14 +91,44 @@
     if (healthFill) healthFill.style.width = clamp100(healthValue) + "%";
   }
 
+    // ---------------- Stage image binding & safety ----------------
+  function attachStageImgErrorHandler(imgEl) {
+    if (!imgEl) return;
+    imgEl.addEventListener('error', () => {
+      console.warn('[stageImg] failed to load, falling back to icons/miss.png');
+      try {
+        if (!imgEl.src || imgEl.src.endsWith('icons/miss.png')) return;
+        imgEl.src = 'icons/miss.png';
+        imgEl.alt = 'Stage: miss';
+      } catch (e) { /* ignore */ }
+    });
+  }
+
+  if (stageImg) {
+    attachStageImgErrorHandler(stageImg);
+  } else {
+    // if script ran too early, rebind after DOM ready
+    window.addEventListener('DOMContentLoaded', () => {
+      const retry = document.getElementById('stageImg');
+      if (retry) {
+        attachStageImgErrorHandler(retry);
+        try { updateStageImage(healthValue, toothReady); } catch (e) { /* ignore */ }
+        console.log('[ui] stageImg bound after DOMContentLoaded');
+      } else {
+        console.warn('[ui] stageImg not found after DOMContentLoaded');
+      }
+    });
+  }
+
   // ---------- stage image logic ----------
-  function chooseStageImageFilename(health, modelPlaced) {
+ function chooseStageImageFilename(health, modelPlaced) {
     // if model not placed/detected -> miss
-    if (!modelPlaced) {
-      return 'icons/miss.png';
-    } else if (health >= 75) {
+    if (!modelPlaced) return 'icons/miss.png';
+
+    // model placed -> choose by health
+    if (health >= 75) {
       // stage 1 & 2 -> normal
-      return 'icons/gigi normal.png'; 
+      return 'icons/gigi normal.png';
     } else if (health >= 50) {
       // stage 3 -> karang
       return 'icons/gigikarang.png';
@@ -109,14 +139,28 @@
   }
 
   function updateStageImage(health, modelPlaced) {
-    if (!stageImg) return;
+    // defensive: try to resolve element if stageImg was not bound earlier
+    const imgEl = document.getElementById('stageImg') || stageImg;
+    if (!imgEl) {
+      console.warn('[stage] stageImg element not bound; cannot update image right now');
+      return;
+    }
     const file = chooseStageImageFilename(typeof health === 'number' ? health : 100, !!modelPlaced);
-    // encode in case filename has spaces
-    stageImg.src = encodeURI(file);
-    // optional: update alt/title for accessibility
-    stageImg.alt = 'Stage: ' + file;
+    console.log('[stage] updateStageImage ->', { health: health, modelPlaced: !!modelPlaced, file });
+    try {
+      imgEl.src = encodeURI(file);
+      imgEl.alt = 'Stage: ' + file;
+    } catch (e) {
+      console.warn('[stage] failed to set stage image src', e);
+    }
   }
   // ---------- end stage image logic ----------
+  
+  // Provide a compatibility stub so any leftover calls to updateStageIndicatorFromHealth won't crash
+  function updateStageIndicatorFromHealth(/*health*/) {
+    // noop: older SVG-based indicator not used — image-based handled by updateStageImage
+    return;
+  }
 
   function fadeInfo(text) {
     if (!info) return;
@@ -327,5 +371,4 @@
   // sync initial
   updateStageImage(healthValue, toothReady);
   updateStageIndicatorFromHealth(healthValue);
-  updateStageImage(healthValue, toothReady);
 })();
