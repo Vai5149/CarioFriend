@@ -197,13 +197,9 @@ canvas { display:block; width:100vw; height:100vh; position: absolute; }
 
 /* Stage image indicator (kanan-bawah) */
 #stageIndicator {
-  position: absolute;
-  right: 18px;
-  bottom: 18px;
-  width: 84px;
-  height: 84px;
-  z-index: 72;
-  pointer-events: auto;
+  margin-top: 8px;
+  width: 70px;
+  height: 70px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -211,7 +207,12 @@ canvas { display:block; width:100vw; height:100vh; position: absolute; }
   border-radius: 12px;
   padding: 6px;
   box-shadow: 0 6px 18px rgba(0,0,0,0.25);
-  transition: transform 0.18s ease, opacity 0.18s ease;
 }
-#stageIndicator img { width: 100%; height: 100%; object-fit: contain; display:block; }
+#stageIndicator img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  display: block;
+}
+
 #stageIndicator:active { transform: scale(0.97); }
