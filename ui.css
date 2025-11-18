@@ -134,13 +134,10 @@ canvas {
   flex-direction: column;
   align-items: center;
   gap: 8px;
+  pointer-events: none;
   z-index: 50;
   opacity: 0;
   transition: opacity 0.3s ease;
-
-  /* Fix: aktifkan klik */
-  pointer-events: auto;
-  cursor: pointer;
 }
 
 /* TAMBAHKAN CLASS UNTUK SHOW TOOTH STATUS SAAT AR */
@@ -152,7 +149,6 @@ canvas {
   width: 80px;
   height: 80px;
   object-fit: contain;
-  cursor: pointer;
 }
 
 #toothStatusText {
@@ -314,7 +310,10 @@ canvas {
   transition: opacity 0.18s ease, transform 0.18s ease;
 }
 
+/*Odontogram */
 /* ---------- Odontogram Modal (pop-up) ---------- */
+#toothStatusIcon { cursor: pointer; } /* pointer saat hover untuk menandakan bisa diklik */
+
 .modal {
   position: fixed;
   inset: 0;
@@ -419,4 +418,16 @@ canvas {
   .modal-close { font-size: 24px; top: 8px; right: 8px; }
   .modal-title { font-size: 16px; }
   #odontModalImg { max-width: 92vw; }
+}
+
+/* zoom effect for modal image (optional) */
+#odontModalImg {
+  transition: transform 240ms ease;
+  max-width: 80vw;
+  max-height: 70vh;
+}
+#odontModalImg.zoomed {
+  transform: scale(1.7);
+  max-width: none;
+  max-height: none;
 }

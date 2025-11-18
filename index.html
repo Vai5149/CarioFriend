@@ -41,19 +41,6 @@
       <div id="toothStatusText">Gigi tidak ada</div>
     </div>
 
-    <!-- ========================= -->
-    <!--   ODONTOGRAM MODAL POPUP  -->
-    <!-- ========================= -->
-    <div id="odontModal" class="modal" aria-hidden="true">
-      <div class="modal-backdrop" id="odontBackdrop" tabindex="-1"></div>
-      <div class="modal-content" role="dialog" aria-modal="true" aria-labelledby="odontTitle">
-        <button id="modalClose" class="modal-close" aria-label="Tutup">&times;</button>
-        <h3 id="odontTitle" class="modal-title">Odontogram</h3>
-        <img id="odontModalImg" src="odontogram/odontogram_hilang.png" alt="Odontogram besar">
-        <div id="odontModalText" class="modal-text">Gigi tidak ada</div>
-      </div>
-    </div>
-
     <div id="infoText">Tekan Enter AR. Lalu arahkan kamera ke lantai hingga muncul lingkaran hijau dan tekan lingkaran untuk memunculkan gigi!</div>
 
     <div id="buttons">
@@ -72,6 +59,39 @@
         <span>Makanan Manis</span>
       </button>
     </div>
+
+      <!-- Modal Odontogram (pop-up) -->
+    <div id="odontModal" class="modal" role="dialog" aria-modal="true" aria-hidden="true">
+    
+    <!-- BACKDROP WAJIB ADA -->
+    <div id="odontBackdrop" class="modal-backdrop"></div>
+
+    <!-- Konten modal -->
+    <div class="modal-content" role="document">
+
+      <button class="modal-close" id="modalClose" aria-label="Tutup">&times;</button>
+
+      <h2 id="odontModalTitle" class="modal-title">Odontogram</h2>
+
+      <!-- Gambar besar -->
+      <img id="odontModalImg" src="odontogram/odontogram_hilang.png" alt="Odontogram besar">
+
+      <!-- Teks gambar -->
+      <div id="odontModalText" class="modal-text">Odontogram: Gigi hilang</div>
+
+      <!-- Galeri thumbnail -->
+      <div id="odontThumbs" class="odont-thumbs">
+        <!-- thumbnail tetap sama -->
+        <img src="odontogram/odontogram_normal.png" class="odont-thumb" data-label="Odontogram: Gigi sehat" data-src="odontogram/odontogram_normal.png">
+        <img src="odontogram/odontogram_karang.png" class="odont-thumb" data-label="Odontogram: Gigi karang" data-src="odontogram/odontogram_karang.png">
+        <img src="odontogram/odontogram_karies.png" class="odont-thumb" data-label="Odontogram: Gigi karies" data-src="odontogram/odontogram_karies.png">
+        <img src="odontogram/odontogram_hilang.png" class="odont-thumb" data-label="Odontogram: Gigi tidak ada" data-src="odontogram/odontogram_hilang.png">
+      </div>
+
+    </div>
+</div>
+
+
 
     <!-- Scale Buttons -->
     <div id="scaleButtons">
