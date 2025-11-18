@@ -45,6 +45,37 @@ const xrBtn = document.getElementById('xrBtn');
 // lighting global
 let spotLight = null;
 
+// ---------- NEW: track last action from UI ----------
+let lastAction = null;
+// listener to update lastAction when UI notifies
+window.addEventListener('ui-last-action', (e) => {
+  try {
+    lastAction = e.detail && e.detail.action ? e.detail.action : null;
+  } catch (err) {
+    lastAction = null;
+  }
+});
+// ---------------------------------------------------
+
+// ------------------- NEW: health stage messages helper -------------------
+function getHealthStateMessage(healthKey) {
+  switch (healthKey) {
+    case 100:
+      return "😁 Makan makanan manis boleh tapi jangan terlalu sering ya!";
+    case 75:
+      return "🙂 Waduh! Ada sedikit plak yang menempel akibat kamu memakan makanan manis dan tidak menggosok gigi... Kamu harus segera menggosok gigimu ya!";
+    case 50:
+      return "😬 Oh tidak! Sukrosa yang terdapat pada sisa makanan menimbulkan bakteri dan membentuk asam laktat. Kalau tidak segera menggosok gigi, nanti gigimu berlubang lho!";
+    case 25:
+      return "⚠️ Hey jangan makan makanan manis terus dong... Gigimu jadi berlubang. Yuk makan makanan sehat dan berserat dan menggosok gigi agar gigimu tetap sehat!";
+    case 0:
+      return "🚨 Yah... Gigimu sudah berlubang hingga mencapai saraf gigi dan menimbulkan infeksi. Segera konsultasi ke dokter gigi ya! Kamu bisa menekan tombol RESET untuk memulai ulang.";
+    default:
+      return "Status gigi berubah.";
+  }
+}
+// -------------------------------------------------------------------------
+
 xrBtn.addEventListener('click', () => {
   if (!xrSession) requestXRSession();
   else endXRSession();
@@ -153,11 +184,32 @@ function initThree() {
     currentHealthModelKey = DEFAULT_HEALTH_KEY;
     // also hide reticle so user re-place (reticle will show when hit-test resumes)
     reticle.visible = false;
+
+    // clear last action so subsequent health messages revert to normal behavior
+    lastAction = null;
   });
 
   // NEW: respond to exit request from UI
   window.addEventListener('request-exit-ar', () => {
     endXRSession();
+  });
+
+  // NEW: handle scale requests
+  window.addEventListener('scale-request', (e) => {
+    if (!placedObject) return;
+    const dir = e.detail && typeof e.detail.dir === 'number' ? e.detail.dir : 0;
+    if (dir === 0) return;
+
+    // compute new uniform scale (clamped)
+    const current = placedObject.scale && placedObject.scale.x ? placedObject.scale.x : BASE_SCALE;
+    const newScale = THREE.MathUtils.clamp(current + dir * 0.05, 0.15, 0.55);
+    placedObject.scale.setScalar(newScale);
+
+    try {
+      if (window.kariesUI && typeof window.kariesUI.fadeInfo === 'function') {
+        window.kariesUI.fadeInfo(dir > 0 ? "Gigi diperbesar" : "Gigi diperkecil");
+      }
+    } catch (e) { /* ignore */ }
   });
 
   console.log('index.js loaded. Ready.');
@@ -525,7 +577,30 @@ function animateCandyFade(wrapper) {
 function swapModelForHealthAfterDelay(healthKey) {
   const modelFile = MODEL_MAP[healthKey];
   if (!modelFile) return;
-  if (placedObject && placedObject.userData && placedObject.userData.modelFile === modelFile) return;
+
+  // If same model already in scene, still inform UI (refresh message)
+  if (placedObject && placedObject.userData && placedObject.userData.modelFile === modelFile) {
+    try {
+      // Decide message based on lastAction:
+      let msgSame = "";
+      if (lastAction === "brush") {
+        msgSame = "Bagus kamu telah menggosok gigi! Kamu dianjurkan menggosok gigi minimal dua kali sehari, yaitu setelah sarapan pagi dan sebelum tidur malam. Setiap kali menyikat gigi, lakukan selama minimal 2 menit ya!";
+      } else if (lastAction === "healthy") {
+        msgSame = "Yummy! Makan makanan berserat itu artinya gigi kita kerja keras buat mengunyahnya. Jadi, dia membantu membuang kotoran dan sisa makanan yang menempel pada gigi!";
+      } else if (lastAction === "sweet") {
+        msgSame = getHealthStateMessage(healthKey);
+      } else {
+        msgSame = getHealthStateMessage(healthKey);
+      }
+
+      if (window.kariesUI && typeof window.kariesUI.fadeInfo === 'function') {
+        window.kariesUI.fadeInfo(msgSame);
+      } else {
+        window.dispatchEvent(new CustomEvent('health-stage-info', { detail: { msg: msgSame, key: healthKey } }));
+      }
+    } catch (e) { /* ignore */ }
+    return;
+  }
 
   const pos = new THREE.Vector3();
   const quat = new THREE.Quaternion();
@@ -541,15 +616,46 @@ function swapModelForHealthAfterDelay(healthKey) {
       placedObject = null;
     }
 
+    // message for this health stage, but modify logic based on lastAction
+    let stateMsg = "";
+
+    if (lastAction === "brush") {
+      stateMsg = "Bagus kamu telah menggosok gigi! Kamu dianjurkan menggosok gigi minimal dua kali sehari, yaitu setelah sarapan pagi dan sebelum tidur malam. Setiap kali menyikat gigi, lakukan selama minimal 2 menit ya!";
+    } else if (lastAction === "healthy") {
+      stateMsg = "Yummy! Makan makanan berserat itu artinya gigi kita kerja keras buat mengunyahnya. Jadi, dia membantu membuang kotoran dan sisa makanan yang menempel pada gigi!";
+    } else if (lastAction === "sweet") {
+      stateMsg = getHealthStateMessage(healthKey);
+    } else {
+      // fallback: if no lastAction known, use health message
+      stateMsg = getHealthStateMessage(healthKey);
+    }
+
     if (cachedEntry) {
       const newModel = cloneSceneWithClips(cachedEntry);
       newModel.position.copy(pos);
       newModel.quaternion.copy(quat);
-      newModel.scale.set(BASE_SCALE, BASE_SCALE, BASE_SCALE);
+
+      // If user previously scaled model, preserve that scale (scl from matrixWorld)
+      if (scl && (scl.x !== 1 || scl.y !== 1 || scl.z !== 1)) {
+        newModel.scale.copy(scl);
+      } else {
+        newModel.scale.set(BASE_SCALE, BASE_SCALE, BASE_SCALE);
+      }
+
       newModel.userData.modelFile = modelFile;
       applyMeshMaterialTweaks(newModel);
       scene.add(newModel);
       placedObject = newModel;
+
+      // inform UI about new health stage (with action-aware message)
+      try {
+        if (window.kariesUI && typeof window.kariesUI.fadeInfo === 'function') {
+          window.kariesUI.fadeInfo(stateMsg);
+        } else {
+          window.dispatchEvent(new CustomEvent('health-stage-info', { detail: { msg: stateMsg, key: healthKey } }));
+        }
+      } catch (e) { /* ignore */ }
+
       return;
     }
 
@@ -559,11 +665,26 @@ function swapModelForHealthAfterDelay(healthKey) {
         if (!newModel) { console.error('GLTF has no scene:', modelFile); return; }
         newModel.position.copy(pos);
         newModel.quaternion.copy(quat);
-        newModel.scale.set(BASE_SCALE, BASE_SCALE, BASE_SCALE);
+
+        if (scl && (scl.x !== 1 || scl.y !== 1 || scl.z !== 1)) {
+          newModel.scale.copy(scl);
+        } else {
+          newModel.scale.set(BASE_SCALE, BASE_SCALE, BASE_SCALE);
+        }
+
         newModel.userData.modelFile = modelFile;
         applyMeshMaterialTweaks(newModel);
         scene.add(newModel);
         placedObject = newModel;
+
+        // inform UI about new health stage
+        try {
+          if (window.kariesUI && typeof window.kariesUI.fadeInfo === 'function') {
+            window.kariesUI.fadeInfo(stateMsg);
+          } else {
+            window.dispatchEvent(new CustomEvent('health-stage-info', { detail: { msg: stateMsg, key: healthKey } }));
+          }
+        } catch (e) { /* ignore */ }
       },
       undefined,
       (err) => { console.error('failed to load', modelFile, err); }
@@ -677,6 +798,7 @@ function onSelect() {
     objectPlaced = true;
     reticle.visible = false;
     window.dispatchEvent(new CustomEvent('model-placed', { detail: newModel }));
+
     return;
   }
 

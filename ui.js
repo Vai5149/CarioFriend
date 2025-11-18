@@ -1,4 +1,4 @@
-/* ui.js - clean UI wiring (extra buttons visible only in AR) */
+/* ui.js - clean UI wiring (controls visible only in AR) */
 (() => {
   const info = document.getElementById('infoText');
   const cleanFill = document.getElementById('cleanFill');
@@ -6,21 +6,30 @@
   const buttons = Array.from(document.querySelectorAll('.action-btn'));
   const xrBtn = document.getElementById('xrBtn');
 
-  // NEW: references to extra buttons container + buttons
-  const extraButtons = document.getElementById('extraButtons');
+  // NEW extra buttons
   const resetBtn = document.getElementById('resetBtn');
   const exitBtn = document.getElementById('exitBtn');
+
+  // NEW scale buttons
+  const scaleUpBtn = document.getElementById('scaleUpBtn');
+  const scaleDownBtn = document.getElementById('scaleDownBtn');
+
+  // containers (to toggle visibility)
+  const extraButtonsContainer = document.getElementById('extraButtons');
+  const scaleButtonsContainer = document.getElementById('scaleButtons');
 
   let toothReady = false;
   let cleanValue = 100;
   let healthValue = 100;
 
   // counters for repeated actions
-  let toothStage = 0;
   let sweetCount = 0;
   let healthyCount = 0;
 
-  // initially action buttons disabled until model placed
+  // track whether currently in XR session
+  let inXR = false;
+
+  // initially buttons disabled until model placed; extra/scale hidden (CSS handles hidden by default)
   function setButtonsEnabled(enabled) {
     buttons.forEach(b => {
       b.style.opacity = enabled ? '1' : '0.55';
@@ -28,9 +37,49 @@
       b.tabIndex = enabled ? 0 : -1;
       if (enabled) b.removeAttribute('aria-disabled'); else b.setAttribute('aria-disabled', 'true');
     });
-    // DO NOT force extraButtons here — visibility is controlled by xr-started/xr-ended
+    // scale buttons mirror action-buttons (only usable when model placed)
+    if (scaleUpBtn) {
+      scaleUpBtn.style.opacity = enabled ? '1' : '0.55';
+      scaleUpBtn.style.pointerEvents = enabled ? 'auto' : 'none';
+      scaleUpBtn.tabIndex = enabled ? 0 : -1;
+      if (enabled) scaleUpBtn.removeAttribute('aria-disabled'); else scaleUpBtn.setAttribute('aria-disabled', 'true');
+    }
+    if (scaleDownBtn) {
+      scaleDownBtn.style.opacity = enabled ? '1' : '0.55';
+      scaleDownBtn.style.pointerEvents = enabled ? 'auto' : 'none';
+      scaleDownBtn.tabIndex = enabled ? 0 : -1;
+      if (enabled) scaleDownBtn.removeAttribute('aria-disabled'); else scaleDownBtn.setAttribute('aria-disabled', 'true');
+    }
+
+    // NOTE: Reset / Exit visibility & interactivity are controlled by inXR + CSS class.
+    // Do NOT force them here; they become interactive when inXR === true and container has .visible-controls.
   }
   setButtonsEnabled(false);
+
+  // helpers to show/hide AR-only controls
+  function showARControls(show) {
+    inXR = !!show;
+    if (show) {
+      if (extraButtonsContainer) extraButtonsContainer.classList.add('visible-controls');
+      if (scaleButtonsContainer) scaleButtonsContainer.classList.add('visible-controls');
+    } else {
+      if (extraButtonsContainer) extraButtonsContainer.classList.remove('visible-controls');
+      if (scaleButtonsContainer) scaleButtonsContainer.classList.remove('visible-controls');
+    }
+    // When hiding AR controls, ensure they can't be focused or clicked
+    if (!show) {
+      if (resetBtn) { resetBtn.tabIndex = -1; resetBtn.setAttribute('aria-hidden', 'true'); }
+      if (exitBtn)  { exitBtn.tabIndex = -1;  exitBtn.setAttribute('aria-hidden', 'true'); }
+      if (scaleUpBtn) { scaleUpBtn.tabIndex = -1; scaleUpBtn.setAttribute('aria-hidden', 'true'); }
+      if (scaleDownBtn) { scaleDownBtn.tabIndex = -1; scaleDownBtn.setAttribute('aria-hidden', 'true'); }
+    } else {
+      if (resetBtn) { resetBtn.tabIndex = 0; resetBtn.removeAttribute('aria-hidden'); }
+      if (exitBtn)  { exitBtn.tabIndex = 0;  exitBtn.removeAttribute('aria-hidden'); }
+      // scale buttons remain controlled by setButtonsEnabled (enabled only when model placed)
+      if (scaleUpBtn) scaleUpBtn.removeAttribute('aria-hidden');
+      if (scaleDownBtn) scaleDownBtn.removeAttribute('aria-hidden');
+    }
+  }
 
   // UI helpers
   function clamp100(v) { return Math.max(0, Math.min(100, Math.round(v * 100) / 100)); }
@@ -47,15 +96,6 @@
     }, 160);
   }
 
-  // show/hide extra buttons (called on xr-started/xr-ended)
-  function setExtraButtonsVisible(visible) {
-    if (!extraButtons) return;
-    if (visible) extraButtons.classList.add('visible');
-    else extraButtons.classList.remove('visible');
-  }
-  // ensure hidden by default
-  setExtraButtonsVisible(false);
-
   // handle clicks -> request animation in index.js
   buttons.forEach(btn => {
     btn.addEventListener('click', () => {
@@ -71,9 +111,31 @@
     });
   });
 
+  // Scale buttons -> dispatch scale-request
+  if (scaleUpBtn) {
+    scaleUpBtn.addEventListener('click', () => {
+      if (!toothReady) {
+        fadeInfo("Tempatkan model terlebih dahulu untuk mengubah ukuran.");
+        return;
+      }
+      window.dispatchEvent(new CustomEvent('scale-request', { detail: { dir: +1 } }));
+    });
+  }
+  if (scaleDownBtn) {
+    scaleDownBtn.addEventListener('click', () => {
+      if (!toothReady) {
+        fadeInfo("Tempatkan model terlebih dahulu untuk mengubah ukuran.");
+        return;
+      }
+      window.dispatchEvent(new CustomEvent('scale-request', { detail: { dir: -1 } }));
+    });
+  }
+
   // Reset button -> dispatch reset & update UI state
   if (resetBtn) {
     resetBtn.addEventListener('click', () => {
+      // only allow when inXR
+      if (!inXR) { fadeInfo("Fitur ini hanya tersedia saat berada di AR."); return; }
       // inform AR system to reset scene
       window.dispatchEvent(new CustomEvent('reset'));
       // reset local UI values & lock actions until model placed again
@@ -84,6 +146,7 @@
   // Exit AR button -> request exit; index.js will handle ending session
   if (exitBtn) {
     exitBtn.addEventListener('click', () => {
+      if (!inXR) { fadeInfo("Fitur ini hanya tersedia saat berada di AR."); return; }
       window.dispatchEvent(new CustomEvent('request-exit-ar'));
       fadeInfo("Meminta keluar AR...");
     });
@@ -103,6 +166,11 @@
       }, 300);
       return;
     }
+
+    // Dispatch last action so index.js knows which button triggered this animation
+    // (Important: we dispatch BEFORE performActionEffect so index.js can choose message
+    //  based on both lastAction and the updated health.)
+    window.dispatchEvent(new CustomEvent('ui-last-action', { detail: { action } }));
 
     // After a successful animation, UI logic updates local state and tells index.js to swap model
     performActionEffect(action);
@@ -129,22 +197,26 @@
     updateBars();
   });
 
-  // when XR started: hide Enter AR button + show extra buttons
+  // when XR started: hide Enter AR button and show AR-only controls
   window.addEventListener('xr-started', () => {
     if (xrBtn) xrBtn.classList.add('hidden');
-    // show reset/exit now AR active
-    setExtraButtonsVisible(true);
     fadeInfo("Arahkan kamera ke model dan tekan salah satu aksi.");
+
+    // show AR controls (scale + extra)
+    showARControls(true);
+
+    // note: action buttons still controlled by model-placed (so they remain disabled until model is placed)
   });
 
-  // when XR ended: show Enter AR again, hide extra buttons, and lock UI
+  // when XR ended: show Enter AR again and hide AR-only controls
   window.addEventListener('xr-ended', () => {
     if (xrBtn) xrBtn.classList.remove('hidden');
-    // hide reset/exit after AR ends
-    setExtraButtonsVisible(false);
     toothReady = false;
     setButtonsEnabled(false);
     fadeInfo("AR berhenti. Arahkan kamera ke lantai dan tekan Enter AR.");
+
+    // hide AR-only controls
+    showARControls(false);
   });
 
   // local state changes (if some other part dispatches health-changed directly)
@@ -165,53 +237,16 @@
         fadeInfo("🪥 Menggosok gigi: Kebersihan +25%, Kesehatan +25%");
         break;
       case 'sweet':
-        // setiap tekan mengurangi kebersihan sedikit
         cleanValue = clamp100(cleanValue - 12.5);
-
-        // pastikan toothStage terdefinisi
-        toothStage = (typeof toothStage === 'number') ? toothStage : 0;
-
-        // naik satu tahap per tekan, maksimal 8
-        if (toothStage < 8) toothStage++;
-
-        // kurangi health secara relatif setiap kali kita mencapai tahap genap (2,4,6,8)
-        // ini mengurangi 25% pada stage 2,4,6,8 tanpa mereset health ke nilai absolut.
-        if (toothStage % 2 === 0) {
+        sweetCount++;
+        if (sweetCount >= 2) {
+          sweetCount = 0;
           healthValue = clamp100(healthValue - 25);
-        }
-
-        // tampilkan pesan sesuai tahap
-        switch (toothStage) {
-          case 1:
-            fadeInfo("Wah, gulanya nempel di gigimu! Hati-hati ya, nanti bisa muncul plak.");
-            break;
-          case 2:
-            fadeInfo("Plaknya makin banyak nih… Yuk kurangi permennya supaya gigimu tetap bersih!");
-            break;
-          case 3:
-            fadeInfo("Plaknya berubah jadi asam yang bisa bikin gigi sakit, hati-hati ya!");
-            break;
-          case 4:
-            fadeInfo("Asamnya makin kuat… nanti gigimu bisa rusak kalau terus makan manis!");
-            break;
-          case 5:
-            fadeInfo("Lapisan pelindung gigimu mulai melemah. Yuk berhenti makan permen dulu!");
-            break;
-          case 6:
-            fadeInfo("Pelindung gigimu makin rapuh… ayo jaga sebelum bolong beneran!");
-            break;
-          case 7:
-            fadeInfo("Aduh, gigimu mulai bolong! Bisa bahaya, kurangi manisnya ya!");
-            break;
-          case 8:
-            fadeInfo("Giginya sudah bolong besar dan nggak bisa diperbaiki… Harus mulai ulang dari awal ya!");
-            break;
-          default:
-            fadeInfo("🍭 Gula menempel — kebersihan sedikit menurun.");
+          fadeInfo("🍭 Terlalu sering makan manis — kesehatan turun 25%!");
+        } else {
+          fadeInfo("🍭 Gula menempel — kebersihan sedikit menurun.");
         }
         break;
-
-
       case 'healthy':
         cleanValue = clamp100(cleanValue + 12.5);
         healthyCount++;
@@ -234,7 +269,6 @@
     healthValue = 100;
     sweetCount = 0;
     healthyCount = 0;
-    toothStage = 0;
     toothReady = false;
     setButtonsEnabled(false);
     updateBars();
@@ -251,4 +285,6 @@
 
   // initial UI
   updateBars();
+  // ensure AR controls hidden initially
+  showARControls(false);
 })();

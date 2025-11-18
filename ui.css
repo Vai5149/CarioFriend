@@ -1,4 +1,4 @@
-/* ui.css - cleaned (no reset/extra buttons) */
+/* ui.css - cleaned (with reset/exit buttons moved to top center) */
 body {
   margin: 0;
   overflow: hidden;
@@ -26,7 +26,7 @@ canvas { display:block; width:100vw; height:100vh; position: absolute; }
 /* STATUS BARS */
 #bars {
   position: absolute;
-  top: 60px; /* lowered slightly */
+  top: 160px; /* moved lower because extraButtons moved above */
   left: 50%;
   transform: translateX(-50%);
   display: flex;
@@ -59,14 +59,14 @@ canvas { display:block; width:100vw; height:100vh; position: absolute; }
 .bar-inner.damage { animation: blinkRed 0.4s ease; }
 @keyframes blinkRed { 0%,100%{ filter:brightness(1);} 50%{ filter:brightness(2);} }
 
-/* Buttons container (raised a bit) */
+/* Buttons container */
 #buttons {
   width: 100%;
   max-width: 420px;
   display: flex;
   gap: 20px;
   justify-content: center;
-  margin-bottom: 96px; /* move up from bottom */
+  margin-bottom: 96px;
   pointer-events: auto;
   z-index: 45;
 }
@@ -85,7 +85,7 @@ canvas { display:block; width:100vw; height:100vh; position: absolute; }
 .action-btn.healthy img { background:#c8f7c2; }
 .action-btn.sweet img { background:#ffd4e1; }
 
-/* info text (above buttons) */
+/* info text */
 #infoText {
   background: rgba(255,255,255,0.95);
   border-radius: 15px;
@@ -108,7 +108,7 @@ canvas { display:block; width:100vw; height:100vh; position: absolute; }
   top: 18px;
   left: 50%;
   transform: translateX(-50%);
-  z-index: 40;
+  z-index: 70;
   padding: 8px 14px;
   border-radius: 12px;
   border: none;
@@ -120,35 +120,54 @@ canvas { display:block; width:100vw; height:100vh; position: absolute; }
   transition: opacity 0.28s ease, transform 0.18s ease;
 }
 
-/* hidden state (fade out & disable) */
 .xr-btn.hidden {
   opacity: 0;
   pointer-events: none;
   transform: translateX(-50%) scale(0.96);
 }
 
-/* Extra Buttons (Reset & Exit) */
-#extraButtons {
-  width: 100%;
-  max-width: 420px;
+/* Scale Buttons (center bottom) */
+#scaleButtons {
+  position: absolute;
+  bottom: 35px;
+  left: 50%;
+  transform: translateX(-50%);
   display: flex;
   gap: 20px;
-  justify-content: center;
-  margin-bottom: 40px;
-  pointer-events: none; /* default disabled until AR */
-  z-index: 45;
-
-  /* hidden by default */
+  z-index: 60;
+  pointer-events: none;
   opacity: 0;
-  transform: translateY(8px) scale(0.995);
-  transition: opacity 220ms ease, transform 220ms ease;
+  transition: opacity 0.18s ease, transform 0.18s ease;
 }
 
-/* visible when AR started */
-#extraButtons.visible {
-  opacity: 1;
-  pointer-events: auto;
-  transform: translateY(0) scale(1);
+.scale-btn {
+  padding: 10px 20px;
+  border-radius: 12px;
+  border: none;
+  font-weight: 600;
+  cursor: pointer;
+  color: #fff;
+  background: linear-gradient(180deg, #444, #222);
+  box-shadow: 0 3px 10px rgba(0,0,0,0.25);
+  transition: transform 0.15s ease;
+}
+
+.scale-btn:active {
+  transform: scale(0.94);
+}
+
+/* Extra Buttons (Reset & Exit) – moved to top center */
+#extraButtons {
+  position: absolute;
+  top: 85px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  gap: 16px;
+  z-index: 65;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.18s ease, transform 0.18s ease;
 }
 
 .extra-btn {
@@ -165,4 +184,13 @@ canvas { display:block; width:100vw; height:100vh; position: absolute; }
 
 .extra-btn:active {
   transform: scale(0.94);
+}
+
+
+/* show AR-only controls */
+.visible-controls {
+  opacity: 1 !important;
+  pointer-events: auto !important;
+  transform: translateX(-50%) translateY(0) !important;
+  transition: opacity 0.18s ease, transform 0.18s ease;
 }
