@@ -6,6 +6,12 @@
   const buttons = Array.from(document.querySelectorAll('.action-btn'));
   const xrBtn = document.getElementById('xrBtn');
 
+  // STAGE INDICATOR elements (add near other DOM queries)
+  const stageIndicator = document.getElementById('stageIndicator');
+  const stageRing = stageIndicator ? stageIndicator.querySelector('#ring') : null;
+  const stageCore = stageIndicator ? stageIndicator.querySelector('#core') : null;
+
+
   // NEW extra buttons
   const resetBtn = document.getElementById('resetBtn');
   const exitBtn = document.getElementById('exitBtn');
@@ -87,6 +93,39 @@
     if (cleanFill) cleanFill.style.width = clamp100(cleanValue) + "%";
     if (healthFill) healthFill.style.width = clamp100(healthValue) + "%";
   }
+  // ---------- Stage indicator logic ----------
+function getStageKeyFromHealth(h) {
+  if (h >= 100) return 1;   // semua putih
+  if (h >= 75)  return 2;   // pinggir kuning, tengah putih
+  if (h >= 50)  return 3;   // pinggir oranye, tengah kuning
+  if (h >= 25)  return 4;   // pinggir oranye, tengah oranye
+  return 5;                 // tengah hitam, pinggir oranye
+}
+
+const stageColors = {
+  1: { ring: '#ffffff', core: '#ffffff', frame: '#222' },
+  2: { ring: '#FFC107', core: '#ffffff', frame: '#222' },   // kuning ring
+  3: { ring: '#FF9800', core: '#FFC107', frame: '#222' },   // orange ring, yellow core
+  4: { ring: '#FF9800', core: '#FF9800', frame: '#222' },   // both orange
+  5: { ring: '#FF9800', core: '#000000', frame: '#222' }    // core black
+};
+
+function setStageColors(stageKey) {
+  const c = stageColors[stageKey] || stageColors[1];
+  try {
+    if (stageRing) stageRing.style.fill = c.ring;
+    if (stageCore) stageCore.style.fill = c.core;
+    // frame left as dark for contrast
+    const frame = stageIndicator ? stageIndicator.querySelector('#frame') : null;
+    if (frame) frame.style.fill = c.frame;
+  } catch (e) { /* ignore */ }
+}
+
+function updateStageIndicatorFromHealth(h) {
+  setStageColors(getStageKeyFromHealth(h));
+}
+// ---------- end stage logic ----------
+
   function fadeInfo(text) {
     if (!info) return;
     info.style.opacity = 0;
@@ -225,6 +264,8 @@
     if (typeof d.clean === 'number') cleanValue = d.clean;
     if (typeof d.health === 'number') healthValue = d.health;
     updateBars();
+    // setelah updateBars();
+    updateStageIndicatorFromHealth(healthValue);
   });
 
   // apply the "game logic" to UI values AFTER animations finish (called by interactor-finished)
