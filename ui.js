@@ -129,7 +129,7 @@
     if (health >= 75) {
       // stage 1 & 2 -> normal
       return 'icons/gigi normal.png';
-    } else if (health >= 25) {
+    } else if (health >= 15) {
       // stage 3 & 4 -> karang
       return 'icons/gigikarang.png';
     } else {
